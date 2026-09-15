@@ -9,7 +9,12 @@ on:
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/port-repository-checks.yml'
       - '.github/workflows/publish-wiki.yml'
+      - '.github/workflows/xbox-foundation.yml'
       - 'tools/publish_wiki.sh'
+      - 'tools/xbox/**'
+      - 'tests/**'
+      - 'xbox/**'
+      - 'docs/superpowers/plans/**'
       - 'wiki/**'
       - 'README.md'
       - 'PORTING.md'
@@ -20,7 +25,12 @@ on:
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/port-repository-checks.yml'
       - '.github/workflows/publish-wiki.yml'
+      - '.github/workflows/xbox-foundation.yml'
       - 'tools/publish_wiki.sh'
+      - 'tools/xbox/**'
+      - 'tests/**'
+      - 'xbox/**'
+      - 'docs/superpowers/plans/**'
       - 'wiki/**'
       - 'README.md'
       - 'PORTING.md'
@@ -95,3 +105,6 @@ jobs:
 
           print(f"validated {len(pages)} wiki pages and issues #1-#30")
           PY
+
+      - name: Run Original Xbox foundation tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
