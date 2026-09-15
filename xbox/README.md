@@ -6,21 +6,18 @@ It does **not** link DarkPlaces yet. A successful build proves only that the pin
 
 ## Pinned toolchain
 
-The required nxdk revision is recorded in [`nxdk.version`](nxdk.version):
-
-```text
-29638d0b001f179b73c3513489af10ddc2986216
-```
+The required nxdk revision is recorded in [`nxdk.version`](nxdk.version). That file is the single source used by the local makefile, the verifier, and GitHub Actions.
 
 The build rejects a different revision by default. This avoids silently changing compiler, runtime, pbkit, or packaging behavior while the port is being established.
 
 ## Build
 
-Clone nxdk recursively at the pinned revision, then run:
+From the DarkPlaces repository root, clone nxdk recursively and check out the recorded revision:
 
 ```bash
+NXDK_PIN="$(cat xbox/nxdk.version)"
 git clone --recursive https://github.com/XboxDev/nxdk.git ../nxdk
-git -C ../nxdk checkout 29638d0b001f179b73c3513489af10ddc2986216
+git -C ../nxdk checkout "$NXDK_PIN"
 git -C ../nxdk submodule update --init --recursive
 
 make -C xbox NXDK_DIR="$PWD/../nxdk" V=1
@@ -75,4 +72,4 @@ Host-side contract tests run with:
 python3 -m unittest discover -s tests -p 'test_*.py' -v
 ```
 
-The `Xbox foundation` GitHub Actions workflow additionally checks out the exact nxdk revision, builds the XBE/XISO, records SHA-256 checksums, and uploads the artifacts. The existing desktop `sdl-release` job remains a separate required regression check.
+The `Xbox foundation` GitHub Actions workflow additionally reads `xbox/nxdk.version`, checks out that exact nxdk revision, builds the XBE/XISO, records SHA-256 checksums, and uploads the artifacts. The existing desktop `sdl-release` job remains a separate required regression check.
