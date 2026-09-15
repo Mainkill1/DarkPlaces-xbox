@@ -1,0 +1,83 @@
+name: Nexuiz preparation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nexuiz-preparation.yml'
+      - 'thread_null.c'
+      - 'thread.h'
+      - 'qtypes.h'
+      - 'tests/test_xbox_nexuiz_content.py'
+      - 'tests/test_xbox_thread_null.py'
+      - 'tools/xbox/nexuiz_prepare.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-preparation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test content preparation and the real single-thread backend
+        run: |
+          python3 -m unittest discover -s tests -p 'test_xbox_nexuiz_content.py' -v
+          python3 -m unittest discover -s tests -p 'test_xbox_thread_null.py' -v
+
+  nxdk-leaf-compile:
+    name: Compile null-thread backend as Xbox COFF (not engine link)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read foundation nxdk pin
+        id: pin
+        shell: bash
+        run: |
+          sha="$(cat xbox/nxdk.version)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: ${{ steps.pin.outputs.sha }}
+          path: nxdk
+          submodules: recursive
+      - name: Install compiler prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang llvm
+      - name: Compile the actual backend with the pinned Xbox compiler wrapper
+        shell: bash
+        run: |
+          export NXDK_DIR="$GITHUB_WORKSPACE/nxdk"
+          export PATH="$NXDK_DIR/bin:$PATH"
+          python3 tools/xbox/verify_nxdk.py --pin-file xbox/nxdk.version --nxdk-dir "$NXDK_DIR"
+          mkdir -p build/nexuiz-prep
+          nxdk-cc -std=c11 -O2 -Wall -Wextra -Werror -Wno-unused-parameter \
+            -DDP_PLATFORM_XBOX=1 -DDP_SMALLMEMORY=1 \
+            -c thread_null.c -o build/nexuiz-prep/thread_null.obj
+          llvm-readobj --file-headers build/nexuiz-prep/thread_null.obj \
+            | tee build/nexuiz-prep/coff-header.txt
+          python3 - <<'PY'
+          import hashlib, json, pathlib, struct, subprocess
+          path = pathlib.Path('build/nexuiz-prep/thread_null.obj')
+          payload = path.read_bytes()
+          assert len(payload) >= 20 and struct.unpack_from('<H', payload)[0] == 0x14c
+          evidence = {
+              'gate': 'single-source-nxdk-compile-only',
+              'engine_linked': False,
+              'xbox_boot_tested': False,
+              'checkout_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              'nxdk_sha': pathlib.Path('xbox/nxdk.version').read_text().strip(),
+              'object_sha256': hashlib.sha256(payload).hexdigest(),
+              'compiler': subprocess.check_output(['clang', '--version'], text=True).splitlines()[0],
+          }
+          path.with_suffix('.json').write_text(json.dumps(evidence, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-preparation-compile-only
+          if-no-files-found: error
+          path: build/nexuiz-prep/
