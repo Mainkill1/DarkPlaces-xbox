@@ -20,6 +20,15 @@ endif
 ifeq ($(wildcard $(NXDK_DIR)/Makefile),)
 $(error NXDK_DIR must point to an nxdk checkout containing Makefile; got $(NXDK_DIR))
 endif
+ifeq ($(wildcard $(NXDK_DIR)/bin/nxdk-cc),)
+$(error NXDK_DIR is missing the nxdk compiler wrapper: $(NXDK_DIR)/bin/nxdk-cc)
+endif
+
+# nxdk's Makefile invokes wrapper names such as nxdk-cc and nxdk-link. Export
+# both the checkout path and its bin directory so this build entry point works
+# without requiring callers to mutate their parent shell first.
+export NXDK_DIR
+export PATH := $(NXDK_DIR)/bin:$(PATH)
 
 NXDK_ACTUAL := $(strip $(shell git -C "$(NXDK_DIR)" rev-parse HEAD 2>/dev/null))
 ifeq ($(NXDK_ACTUAL),)
