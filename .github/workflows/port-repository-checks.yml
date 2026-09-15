@@ -1,0 +1,70 @@
+name: Port repository checks
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/port-issues.json'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/bootstrap-port-issues.yml'
+      - '.github/workflows/publish-wiki.yml'
+      - 'tools/bootstrap_port_issues.py'
+      - 'tools/publish_wiki.sh'
+      - 'wiki/**'
+      - 'PORTING.md'
+      - 'AGENTS.md'
+  pull_request:
+    paths:
+      - '.github/port-issues.json'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/bootstrap-port-issues.yml'
+      - '.github/workflows/publish-wiki.yml'
+      - 'tools/bootstrap_port_issues.py'
+      - 'tools/publish_wiki.sh'
+      - 'wiki/**'
+      - 'PORTING.md'
+      - 'AGENTS.md'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate issue manifest and bootstrap script
+        run: |
+          python3 -m py_compile tools/bootstrap_port_issues.py
+          python3 tools/bootstrap_port_issues.py --validate-only
+
+      - name: Validate shell scripts
+        run: bash -n tools/publish_wiki.sh
+
+      - name: Validate wiki links
+        run: |
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          wiki = Path("wiki")
+          pages = {path.stem for path in wiki.glob("*.md")}
+          missing = []
+          pattern = re.compile(r"\[[^]]+\]\(([^)]+)\)")
+
+          for path in wiki.glob("*.md"):
+              for target in pattern.findall(path.read_text(encoding="utf-8")):
+                  if "://" in target or target.startswith("#"):
+                      continue
+                  clean = target.split("#", 1)[0]
+                  if clean.endswith(".md"):
+                      clean = Path(clean).stem
+                  if clean and clean not in pages:
+                      missing.append(f"{path}: {target}")
+
+          if missing:
+              raise SystemExit("Missing wiki pages:\n" + "\n".join(missing))
+          print(f"validated {len(pages)} wiki pages")
+          PY

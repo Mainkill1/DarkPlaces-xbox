@@ -51,3 +51,13 @@ emsdk/
 docs/output/
 wasm/preload/*
 !wasm/preload/runhere
+
+# Original Xbox port outputs and local evidence
+/xbox/build/
+/xbox/out/
+/build-xbox/
+/content/generated/
+/benchmark/results/
+/evidence/local/
+*.xbe
+*.iso

@@ -1,0 +1,56 @@
+name: Xbox port task
+description: Propose a bounded implementation or research task for the original Xbox port.
+title: "[Xbox] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Keep one measurable acceptance gate per issue. Link the relevant wiki page and existing dependencies.
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What exact porting gate should this issue unlock?
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior and evidence
+      description: Include file/function references, logs, or captures.
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: Describe boundaries, data flow, feature fallback, and alternatives considered.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use objective, testable checklist items.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation matrix
+      placeholder: |
+        Desktop:
+        xemu:
+        Retail 64 MB:
+        Memory/performance:
+    validations:
+      required: true
+  - type: textarea
+    id: licensing
+    attributes:
+      label: Dependencies and licensing
+      description: Identify any added code, tool, or asset and its license/source.

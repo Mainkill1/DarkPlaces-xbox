@@ -1,0 +1,19 @@
+name: Publish repository wiki
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish wiki directory
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          WIKI_TOKEN: ${{ secrets.WIKI_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: bash tools/publish_wiki.sh
