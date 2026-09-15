@@ -45,14 +45,18 @@ endif
 
 SOURCE_REVISION := $(strip $(shell git -C "$(ROOT_DIR)" rev-parse HEAD 2>/dev/null || printf unknown))
 
-CFLAGS += -std=c11 -Wall -Wextra -Werror
-CFLAGS += -I$(CURDIR)
-CFLAGS += -DDP_XBOX_SOURCE_REVISION=\"$(SOURCE_REVISION)\"
-CFLAGS += -DDP_XBOX_NXDK_REVISION=\"$(NXDK_ACTUAL)\"
-
 SRCS = \
 	$(CURDIR)/smoke/main.c \
 	$(CURDIR)/port_contract.c
+APP_OBJS := $(SRCS:.c=.obj)
+
+# Keep repository-owned code strict without imposing this branch's warning
+# policy on nxdk or its bundled third-party runtime sources.
+DP_XBOX_APP_CFLAGS := -std=c11 -Wall -Wextra -Werror
+DP_XBOX_APP_CFLAGS += -I$(CURDIR)
+DP_XBOX_APP_CFLAGS += -DDP_XBOX_SOURCE_REVISION=\"$(SOURCE_REVISION)\"
+DP_XBOX_APP_CFLAGS += -DDP_XBOX_NXDK_REVISION=\"$(NXDK_ACTUAL)\"
+$(APP_OBJS): CFLAGS += $(DP_XBOX_APP_CFLAGS)
 
 VERIFY_NXDK_FLAGS =
 ifeq ($(ALLOW_UNPINNED_NXDK),1)
