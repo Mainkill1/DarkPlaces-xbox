@@ -6,14 +6,19 @@ The immediate target is **not a feature-complete Nexuiz console port**. The firs
 
 ## Current status
 
-**Planning and repository bootstrap. No Xbox XBE is expected to build yet.**
+**Planning and repository preparation. No Xbox XBE is expected to build yet.**
+
+The live execution plan is [issue #1](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1), with the staged work split across [issues #2–#30](https://github.com/Mainkill1/DarkPlaces-xbox/issues). The repository contains the port design, contribution rules, issue templates, wiki source, validation checks, and a wiki publishing workflow.
 
 The modern DarkPlaces renderer currently exposes OpenGL 3.2 and GLES2 paths. nxdk supplies SDL2 for input/audio/2D and native NV2A graphics APIs, but it does not make the existing DarkPlaces GL renderer a drop-in Xbox renderer. The central porting task is therefore a deliberately reduced `RENDERPATH_XBOX` backend with explicit feature fallbacks.
 
+The canonical wiki source is the `wiki/` directory. GitHub does not create the separate Wiki Git repository until its first Home page is initialized; after that one-time repository action, the **Publish repository wiki** workflow synchronizes these pages.
+
 ## Start here
 
+- [Live port epic and work queue](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
 - [Porting entry point](PORTING.md)
-- [Wiki home](wiki/Home.md)
+- [Wiki home source](wiki/Home.md)
 - [Port goals and scope](wiki/Port-Goals-and-Scope.md)
 - [Port design](wiki/Original-Xbox-Port-Design.md)
 - [Architecture](wiki/Architecture.md)
@@ -31,6 +36,7 @@ The modern DarkPlaces renderer currently exposes OpenGL 3.2 and GLES2 paths. nxd
 - Preserve upstream-friendly boundaries: Xbox-specific code belongs in Xbox files or narrowly scoped compile guards.
 - Do not commit retail game data, BIOS files, EEPROM data, keys, or unreviewed third-party assets.
 - Every performance or compatibility claim needs reproducible evidence from xemu and, when the milestone requires it, real hardware.
+- The final workload is one continuous world and route, not a launcher for unrelated microtests.
 
 ## Upstream
 

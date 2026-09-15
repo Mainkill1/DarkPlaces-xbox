@@ -1,60 +1,82 @@
 # Porting Roadmap
 
-The phases are dependency gates. Later work may be researched in parallel, but it should not merge against an unproven earlier boundary.
+The phases are dependency gates. Later work may be researched in parallel, but it should not merge against an unproven earlier boundary. The live issue numbers below are the execution source of truth.
 
-## Phase 0 — Toolchain and boot
+## Phase 0 — Architecture and reference
 
-- Pin nxdk and add a reproducible build entry point.
-- Produce a tiny bootable XBE/XISO from this repository.
-- Add `DP_PLATFORM_XBOX` and a feature-pruned object/config profile.
-- Bring up DarkPlaces core initialization without the renderer.
-- Provide logging, timing, fatal-error handling, and startup diagnostics.
+Issues [#2–#6](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1):
 
-**Exit:** xemu and hardware show a build identifier and controlled DarkPlaces initialization path.
+- Define the benchmark-focused MVP and long-term compatibility boundary.
+- Choose the renderer baseline from a working NV2A spike, not assumptions about SDL or OpenGL.
+- Pin a reproducible desktop Nexuiz reference workload.
+- Classify every source file and dependency for keep, gate, replace, or exclude.
+- Establish source, content, and release provenance rules.
 
-## Phase 1 — Platform and memory
+**Exit:** product scope, renderer direction, reference workload, source audit, and content policy are explicit and reviewable.
 
-- Implement VFS paths and writable output.
-- Port threads/task queue or lock in a safe single-thread mode.
-- Instrument the 64 MB memory budget.
-- Add controller input.
-- Add audio or a verified no-audio profile.
+## Phase 1 — Toolchain and first engine boot
 
-**Exit:** core loop reads packaged files, writes results, accepts controller commands, and holds a measured memory baseline.
+Issues [#7–#12](https://github.com/Mainkill1/DarkPlaces-xbox/issues/7):
 
-## Phase 2 — NV2A renderer
+- Pin nxdk and add an explicit Xbox link set.
+- Add `DP_PLATFORM_XBOX` and capability-owned feature gates.
+- Implement startup, monotonic timing, bounded logging, and fatal diagnostics.
+- Define application, content, writable, and temporary filesystem roots.
+- Package deterministic XBE/XISO artifacts and automate xemu boot observation.
+- Reach normal `Host_Init` with a diagnosable engine console before full graphics work.
 
-- Approve the renderer decision record.
-- Add `RENDERPATH_XBOX`.
-- Clear/present.
-- Mesh buffers and draw submission.
-- Textures/mipmaps/cache.
-- 2D console.
-- Q3 BSP/lightmaps.
-- Models/animation.
-- materials/fog/alpha.
-- particles/sprites/decals.
-- dynamic lighting/DOT3/reflections and explicit fallbacks.
+**Exit:** a clean checkout builds, packages, boots, identifies itself, mounts minimal legal data, executes a smoke command, and remains stable.
 
-**Exit:** selected Nexuiz map subset renders with stable diagnostics.
+## Phase 2 — Retail-memory and runtime model
 
-## Phase 3 — Content and benchmark
+Issues [#13–#15](https://github.com/Mainkill1/DarkPlaces-xbox/issues/13):
 
-- Audit Nexuiz 2.5.2 content/licenses.
-- Build Xbox-ready asset conversion/cache.
-- Add deterministic camera/demo looping.
-- Build the connected mixed stress world.
-- Add workload markers and scaling profiles.
-- Emit detailed telemetry.
+- Measure executable, runtime, framebuffer, renderer, content, audio, stack, and temporary peaks.
+- Replace generic `DP_SMALLMEMORY` guesses with an Xbox workload profile.
+- Define the single-core task model and statically linked dependency policy.
 
-**Exit:** repeatable complete loop with all required workload zones.
+**Exit:** the 64 MiB target has enforceable category budgets, preflight rejection, deterministic OOM evidence, and no accidental desktop loader/runtime model.
 
-## Phase 4 — Automation and release
+## Phase 3 — NV2A renderer and effects
 
-- Automated nxdk build and XBE/XISO artifacts.
-- Automated xemu startup/completion smoke.
-- Retail 64 MB validation and soak.
-- Performance/memory tuning.
-- License-clean release packaging and known-limit documentation.
+Issues [#16–#22](https://github.com/Mainkill1/DarkPlaces-xbox/issues/16):
 
-**Exit:** clean checkout to reproducible release, validated in xemu and on standard hardware.
+- Bring up video mode, framebuffer, present, timeout, and restart handling.
+- Implement the core mesh/state backend with bounded pushbuffer and buffer ownership.
+- Implement Xbox texture formats, mipmaps, conversion, and residency.
+- Translate the finite material set into vertex programs/register combiners.
+- Render BSP/lightmaps/sky/fog/alpha and then required models/effects.
+- Add tiered water, reflection, shadow, fur/alpha stress, and GPU diagnostics.
+
+**Exit:** the pinned map renders the required world, model, material, and effect subset with stable counters, known fallbacks, and reconciled memory.
+
+## Phase 4 — Input, audio, and deterministic pacing
+
+Issues [#23–#25](https://github.com/Mainkill1/DarkPlaces-xbox/issues/23):
+
+- Add controller-operated diagnostics, free camera, abort, and recovery controls.
+- Add bounded audio output/streaming or explicit benchmark modes that isolate its cost.
+- Separate simulation and route progression from rendering speed and presentation waits.
+
+**Exit:** the route is controllable but scored playback is input-safe, audio mode is explicit, and repeated runs produce the same timeline/checkpoint state.
+
+## Phase 5 — Content and continuous stress world
+
+Issues [#26–#28](https://github.com/Mainkill1/DarkPlaces-xbox/issues/26):
+
+- Pin approved Nexuiz content and convert only reachable assets reproducibly.
+- Build one coherent map and slow route through geometry, texture, fuzz/alpha, math, particles, animation, lighting, water/reflection, audio, and combined-load districts.
+- Add unattended warmup/run/loop state, watchdogs, bounded telemetry, durable summaries, and recovery evidence.
+
+**Exit:** a full uninterrupted loop runs from a reproducible content package, covers every declared workload region, preserves deterministic checkpoints, and emits valid bounded results.
+
+## Phase 6 — Regression, hardware, and release
+
+Issues [#29–#30](https://github.com/Mainkill1/DarkPlaces-xbox/issues/29):
+
+- Build tiered xemu gates from boot through the complete world loop.
+- Compare only matching engine, nxdk, xemu, content, memory, video, effect, audio, and timing profiles.
+- Validate short, 30-minute, multi-hour, and release-candidate soak runs on an unmodified 64 MiB console.
+- Publish reproducible, legally approved artifacts, manifests, symbols, parsers, notices, and known limits.
+
+**Exit:** the complete route passes xemu regression and retail-hardware soak criteria, and the release can be rebuilt and audited from its declared inputs.

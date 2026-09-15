@@ -10,8 +10,11 @@ Produce a deterministic, continuously looping 3D stress world that transitions t
 
 The repository is a fresh fork of modern DarkPlaces. Its renderer supports OpenGL 3.2 and GLES2, while nxdk provides native NV2A graphics facilities rather than a compatible implementation of those DarkPlaces render paths. The port therefore needs an explicit `RENDERPATH_XBOX`, a reduced feature policy, and careful 64 MB asset management.
 
+The live implementation queue is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its linked issues #2–#30. Wiki pages describe the durable design; issues own execution status and evidence.
+
 ## Navigation
 
+- [Live port epic and issue queue](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
 - [Port goals and scope](Port-Goals-and-Scope)
 - [Port design](Original-Xbox-Port-Design)
 - [Architecture](Architecture)
@@ -27,4 +30,6 @@ The repository is a fresh fork of modern DarkPlaces. Its renderer supports OpenG
 - [Contribution workflow](Contribution-Workflow)
 - [Licensing and content](Licensing-and-Content)
 
-The repository stores these pages under `wiki/`. A manual workflow publishes the directory to the GitHub Wiki once the Wiki repository has been initialized.
+## Publishing
+
+The repository stores the canonical pages under `wiki/`. GitHub does not expose the separate `DarkPlaces-xbox.wiki` Git repository until a Home page has been created once from the repository Wiki tab. After that one-time initialization, run the **Publish repository wiki** workflow to synchronize this directory.

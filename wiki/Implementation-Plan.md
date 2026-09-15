@@ -1,69 +1,86 @@
 # Implementation Plan
 
-The executable work plan is stored in `.github/port-issues.json`. The **Bootstrap Xbox port issues** workflow creates the issues, milestones, labels, dependencies, acceptance criteria, and master tracker. This page defines the order in which those issues become mergeable.
+The executable work plan is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its child issues #2–#30. Issue bodies own dependencies, acceptance criteria, and required evidence. This page defines how those issues should be implemented and merged.
 
-## Gate 0 — Repository and toolchain
+## Gate 0 — Architecture and reference
 
-1. Record the upstream baseline and update policy.
-2. Pin nxdk and create the canonical Xbox build entry point.
-3. Build the repository-owned smoke XBE/XISO.
-4. Add `DP_PLATFORM_XBOX` and the first-link feature profile.
-5. Reach a controlled DarkPlaces core loop with diagnostic video.
-6. Establish logging/fatal/timer diagnostics.
-7. Add desktop-regression and Xbox-cross-compile CI.
+1. Bound the MVP and explicitly defer non-benchmark compatibility.
+2. Produce the NV2A renderer-baseline spike before selecting the production architecture.
+3. Freeze a desktop reference workload, inputs, configuration, checkpoints, and output schema.
+4. Complete the source/dependency and licensing audits.
+5. Record decisions in the wiki rather than leaving them only in issue comments.
 
-Do not begin production renderer work against a build that cannot boot and report its identity on both xemu and hardware.
+Do not begin a production renderer against an undefined content set or unproven translation boundary.
 
-## Gate 1 — Runtime foundation
+## Gate 1 — Toolchain and first engine boot
 
-1. Establish VFS/read/write paths for HDD and XISO launches.
-2. Decide and validate threading/task-queue behavior.
-3. Enforce the 64 MB category budget.
-4. Run QuakeC and the normal client/server update path.
-5. Verify deterministic simulation and state hashes.
-6. Add controller/operator controls.
-7. Add audio without making it a graphics blocker.
+1. Pin nxdk and create the canonical Xbox build entry point.
+2. Add explicit platform identity and a first-link source/capability profile.
+3. Implement early startup, monotonic timing, debug output, persistent bounded logs, and fatal records.
+4. Implement packaged-content and writable-root discovery.
+5. Build deterministic XBE/XISO artifacts and an xemu startup observer.
+6. Reach normal DarkPlaces `Host_Init`, execute a smoke command, and idle stably.
 
-Do not accept a content milestone that has no deterministic state sequence or measured memory envelope.
+Do not treat a successful cross-link as a boot milestone.
 
-## Gate 2 — Renderer bring-up
+## Gate 2 — Retail-memory runtime
 
-1. Approve the `RENDERPATH_XBOX` decision record.
-2. Add the backend seam and link without OpenGL.
-3. Clear, submit, synchronize, and present for long loops.
-4. Implement mesh/index buffers and state caching.
-5. Implement textures, mipmaps, residency, and eviction.
-6. Render 2D diagnostics.
-7. Render Q3 BSP world/lightmaps.
-8. Render required models/animation.
-9. Resolve selected materials to finite NV2A recipes.
-10. Batch particles/sprites/decals.
-11. Add bounded lighting and special-effect workloads.
+1. Measure the actual post-runtime memory envelope.
+2. Define category ceilings and preserve an emergency diagnostic margin.
+3. Instrument current/peak allocations and contiguous/GPU-visible failures.
+4. Audit and replace generic `DP_SMALLMEMORY` limits from measured workload needs.
+5. Lock the initial single-core task model and static dependency set.
+6. Preflight content before expensive decode/upload work.
 
-Each step must preserve previous reference cases. Unsupported features remain visible and counted until a reviewed recipe or fallback replaces them.
+Do not accept a renderer or content milestone with unexplained memory, hidden quality reduction, or nondeterministic OOM behavior.
 
-## Gate 3 — Benchmark product
+## Gate 3 — Renderer bring-up
 
-1. Complete the content/license audit.
-2. Generate deterministic Xbox-ready assets on the host.
-3. Run the fixed camera path and loop controller.
-4. Author the connected mixed-workload world and profiles.
-5. Emit raw per-frame and per-marker telemetry.
-6. Produce a desktop content/path reference.
+1. Bring up video, clear, present, synchronization, timeout, and restart.
+2. Implement mesh/index buffers, transforms, state caching, validation, and bounded pushbuffer use.
+3. Implement textures, mipmaps, upload, residency, conversion, and eviction.
+4. Render 2D diagnostics before depending on graphics for failure visibility.
+5. Render BSP world/lightmaps/visibility, then models/animation.
+6. Resolve the pinned material set to finite NV2A programs and explicit fallbacks.
+7. Add particles/sprites/decals/beams/lights.
+8. Add tiered water/reflection/shadow/fur workloads and per-pass diagnostics.
 
-The standard profile is frozen only after every intended zone is proven active by counters rather than screenshots alone.
+Each step must preserve previous reference fixtures. Unsupported features remain visible and counted until a reviewed recipe or fallback replaces them.
 
-## Gate 4 — Acceptance and release
+## Gate 4 — Input, audio, and deterministic pacing
 
-1. Automate xemu execution and evidence packaging.
-2. Add checkpoint visual/counter validation.
-3. Pass retail 64 MB one-hour and extended soak tests.
+1. Add controller diagnostics, free camera, menu/console navigation, abort, and recovery.
+2. Lock out incidental input during scored playback.
+3. Add the selected audio backend and bounded decode/stream policy.
+4. Separate real-time soak mode from uncapped throughput mode.
+5. Pin random seeds, warmup, route start, loop boundary, checkpoints, and state markers.
+6. Report simulation/update, render preparation/submission, present/wait, and total frame time separately.
+
+Do not publish performance results until workload progression is independent of frame rate and result profiles identify every timing/audio mode.
+
+## Gate 5 — Benchmark product
+
+1. Acquire and hash approved source content.
+2. Inventory reachable maps, materials, textures, models, effects, sounds, scripts, and demos.
+3. Convert Xbox-ready assets deterministically and preserve source/license traceability.
+4. Select or author the continuous world and versioned camera spline.
+5. Define workload targets and invalidating caps/fallbacks for every region.
+6. Add unattended preflight, warmup, looping, watchdog recovery, bounded telemetry, and durable summaries.
+7. Verify the loop seam does not accumulate memory, entities, effects, decals, audio, or storage.
+
+The standard profile is frozen only after counters prove every intended region is active; screenshots alone are insufficient.
+
+## Gate 6 — Acceptance and release
+
+1. Automate tiered xemu execution from build/package through the complete loop.
+2. Preserve compact failure bundles and reject mismatched profiles.
+3. Validate fixtures, one full loop, 30-minute runs, multi-hour runs, and the release soak on retail 64 MiB hardware.
 4. Profile and remove accidental port overhead without weakening workload coverage.
-5. Build a clean, manifest-approved, license-compliant release.
+5. Build a manifest-approved release containing only redistributable files and required notices.
 
 ## Pull request slicing
 
-A normal pull request should satisfy one child issue or one independently reviewable acceptance slice. Large issues such as BSP, textures, or materials may use multiple PRs, but each PR must leave a runnable state and update the issue checklist with evidence.
+A normal pull request should satisfy one child issue or one independently reviewable acceptance slice. Large issues such as BSP, textures, materials, content conversion, or telemetry may use multiple PRs, but each PR must leave a runnable state and update the issue checklist with evidence.
 
 Recommended commit order inside a PR:
 
@@ -71,7 +88,7 @@ Recommended commit order inside a PR:
 2. minimal implementation;
 3. xemu evidence;
 4. hardware evidence when required by that issue;
-5. documentation and feature/memory matrix update.
+5. documentation, feature matrix, and memory-budget update.
 
 ## Completion source of truth
 
