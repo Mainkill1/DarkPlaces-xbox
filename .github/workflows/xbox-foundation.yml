@@ -1,0 +1,71 @@
+name: Xbox foundation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/xbox-foundation.yml'
+      - 'tests/test_xbox_foundation.py'
+      - 'tools/xbox/**'
+      - 'xbox/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-contract:
+    name: Host contract tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run foundation contract tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+  nxdk-smoke:
+    name: Build nxdk smoke XBE/XISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out DarkPlaces fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check out pinned nxdk
+        uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: 29638d0b001f179b73c3513489af10ddc2986216
+          path: nxdk
+          submodules: recursive
+
+      - name: Install nxdk host prerequisites
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install build-essential cmake git llvm lld pkgconf python3
+
+      - name: Verify nxdk revision
+        run: |
+          python3 tools/xbox/verify_nxdk.py \
+            --pin-file xbox/nxdk.version \
+            --nxdk-dir nxdk
+
+      - name: Build foundation XBE and XISO
+        run: make -C xbox NXDK_DIR="$GITHUB_WORKSPACE/nxdk" V=1
+
+      - name: Record artifact checksums
+        run: |
+          sha256sum \
+            xbox/build/default.xbe \
+            xbox/darkplaces-xbox-foundation.iso \
+            | tee xbox/build/SHA256SUMS
+
+      - name: Upload foundation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: darkplaces-original-xbox-foundation
+          if-no-files-found: error
+          path: |
+            xbox/build/default.xbe
+            xbox/darkplaces-xbox-foundation.iso
+            xbox/build/SHA256SUMS
