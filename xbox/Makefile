@@ -1,3 +1,5 @@
+.DEFAULT_GOAL := all
+
 ROOT_DIR := $(abspath $(CURDIR)/..)
 NXDK_DIR ?= $(abspath $(ROOT_DIR)/../nxdk)
 NXDK_PIN_FILE := $(CURDIR)/nxdk.version
