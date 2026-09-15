@@ -23,6 +23,7 @@ The live implementation queue is the [master port epic](https://github.com/Maink
 - [Feature support matrix](Feature-Support-Matrix)
 - [Memory budget](Memory-Budget)
 - [Nexuiz stress world](Nexuiz-Stress-World)
+- [Nexuiz integration preparation](Nexuiz-Integration-Preparation)
 - [Validation and telemetry](Validation-and-Telemetry)
 - [Porting roadmap](Porting-Roadmap)
 - [Implementation plan](Implementation-Plan)
