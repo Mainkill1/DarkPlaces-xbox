@@ -1,0 +1,68 @@
+name: Apply Original Xbox port preparation
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/port-prep.tar.xz'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-original-xbox-port-preparation
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.repository == 'Mainkill1/DarkPlaces-xbox'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify and unpack preparation payload
+        run: |
+          echo '52903bf3ec7977fafc2a3741741accff015d91fa8086ac0f0bf02e2e97f019a0  .github/port-prep.tar.xz' | sha256sum --check -
+          tar -xJf .github/port-prep.tar.xz
+          rm -f .github/port-prep.tar.xz
+          rm -f .github/workflows/apply-port-prep.yml
+          chmod +x tools/bootstrap_port_issues.py tools/publish_wiki.sh
+
+      - name: Validate generated repository content
+        run: |
+          python3 -m py_compile tools/bootstrap_port_issues.py
+          python3 tools/bootstrap_port_issues.py --validate-only
+          python3 -m json.tool .github/port-issues.json >/dev/null
+          bash -n tools/publish_wiki.sh
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          wiki = Path('wiki')
+          pages = {path.stem for path in wiki.glob('*.md')}
+          missing = []
+          pattern = re.compile(r'\[[^]]+\]\(([^)]+)\)')
+          for path in wiki.glob('*.md'):
+              for target in pattern.findall(path.read_text(encoding='utf-8')):
+                  if '://' in target or target.startswith('#'):
+                      continue
+                  clean = target.split('#', 1)[0]
+                  if clean.endswith('.md'):
+                      clean = Path(clean).stem
+                  if clean and clean not in pages:
+                      missing.append(f'{path}: {target}')
+          if missing:
+              raise SystemExit('Missing wiki pages:\n' + '\n'.join(missing))
+          print(f'validated {len(pages)} wiki pages')
+          PY
+
+      - name: Commit prepared repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: prepare repository for Original Xbox port'
+          git push origin HEAD:master
