@@ -1,0 +1,37 @@
+name: Nexuiz release archive parts
+on:
+  push:
+    branches: [build/nexuiz-native-dependencies]
+    paths: ['.github/workflows/nexuiz-content-parts.yml']
+permissions:
+  contents: read
+jobs:
+  content:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Retrieve and partition original content
+        run: |
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 \
+            'https://downloads.sourceforge.net/project/nexuiz/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip' -o nexuiz-252.zip
+          sha256sum nexuiz-252.zip > SHA256SUMS
+          split -b 400M -d nexuiz-252.zip nexuiz.part
+          sha256sum nexuiz.part* >> SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-part00
+          path: nexuiz.part00
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-part01
+          path: nexuiz.part01
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-part02
+          path: |
+            nexuiz.part02
+            SHA256SUMS
+          compression-level: 0
