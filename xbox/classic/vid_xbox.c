@@ -1,0 +1,245 @@
+#define GL_GLEXT_PROTOTYPES
+#include <pbgl.h>
+#include <GL/gl.h>
+#include <GL/glext.h>
+#include <hal/video.h>
+#include <SDL.h>
+#include <math.h>
+#include <string.h>
+
+#include "quakedef.h"
+
+int cl_available = true;
+qboolean vid_supportrefreshrate = false;
+
+cvar_t joy_detected = {CVAR_READONLY, "joy_detected", "0", "number of controllers detected"};
+cvar_t joy_enable = {CVAR_SAVE, "joy_enable", "1", "enables controller support"};
+cvar_t joy_index = {0, "joy_index", "0", "controller index"};
+cvar_t joy_axisforward = {0, "joy_axisforward", "1", "left stick vertical"};
+cvar_t joy_axisside = {0, "joy_axisside", "0", "left stick horizontal"};
+cvar_t joy_axisup = {0, "joy_axisup", "-1", "unused"};
+cvar_t joy_axispitch = {0, "joy_axispitch", "3", "right stick vertical"};
+cvar_t joy_axisyaw = {0, "joy_axisyaw", "2", "right stick horizontal"};
+cvar_t joy_axisroll = {0, "joy_axisroll", "-1", "unused"};
+cvar_t joy_deadzoneforward = {0, "joy_deadzoneforward", "0.20", "left stick deadzone"};
+cvar_t joy_deadzoneside = {0, "joy_deadzoneside", "0.20", "left stick deadzone"};
+cvar_t joy_deadzoneup = {0, "joy_deadzoneup", "0.20", "unused"};
+cvar_t joy_deadzonepitch = {0, "joy_deadzonepitch", "0.20", "right stick deadzone"};
+cvar_t joy_deadzoneyaw = {0, "joy_deadzoneyaw", "0.20", "right stick deadzone"};
+cvar_t joy_deadzoneroll = {0, "joy_deadzoneroll", "0.20", "unused"};
+cvar_t joy_sensitivityforward = {0, "joy_sensitivityforward", "-1", "movement multiplier"};
+cvar_t joy_sensitivityside = {0, "joy_sensitivityside", "1", "movement multiplier"};
+cvar_t joy_sensitivityup = {0, "joy_sensitivityup", "1", "unused"};
+cvar_t joy_sensitivitypitch = {0, "joy_sensitivitypitch", "1.4", "look multiplier"};
+cvar_t joy_sensitivityyaw = {0, "joy_sensitivityyaw", "-1.4", "look multiplier"};
+cvar_t joy_sensitivityroll = {0, "joy_sensitivityroll", "1", "unused"};
+
+static SDL_GameController *controller;
+static unsigned char oldbuttons[16];
+static qboolean pbgl_started;
+
+static double Xbox_Axis(SDL_GameControllerAxis axis, double sensitivity, double deadzone)
+{
+	double value;
+	if (!controller)
+		return 0;
+	value = SDL_GameControllerGetAxis(controller, axis) / 32767.0;
+	value = bound(-1, value, 1);
+	if (fabs(value) < deadzone)
+		return 0;
+	value = (fabs(value) - deadzone) / (1.0 - deadzone) * (value < 0 ? -1 : 1);
+	return value * sensitivity;
+}
+
+static void Xbox_OpenController(void)
+{
+	int i;
+	if (controller && SDL_GameControllerGetAttached(controller))
+		return;
+	if (controller)
+	{
+		SDL_GameControllerClose(controller);
+		controller = NULL;
+	}
+	for (i = 0; i < SDL_NumJoysticks(); ++i)
+	{
+		if (SDL_IsGameController(i))
+		{
+			controller = SDL_GameControllerOpen(i);
+			if (controller)
+				break;
+		}
+	}
+	Cvar_SetValueQuick(&joy_detected, controller ? 1 : 0);
+	memset(oldbuttons, 0, sizeof(oldbuttons));
+}
+
+static void Xbox_KeyEdge(int slot, qboolean down, int gamekey, int menukey)
+{
+	int key = key_dest == key_menu ? menukey : gamekey;
+	if (slot < 0 || slot >= (int)sizeof(oldbuttons) || key <= 0)
+		return;
+	if (!!oldbuttons[slot] != !!down)
+	{
+		oldbuttons[slot] = down != 0;
+		Key_Event(key, 0, down);
+	}
+}
+
+void Sys_SendKeyEvents(void)
+{
+	SDL_Event event;
+	qboolean lt, rt;
+	while (SDL_PollEvent(&event))
+	{
+		if (event.type == SDL_CONTROLLERDEVICEADDED || event.type == SDL_CONTROLLERDEVICEREMOVED)
+			Xbox_OpenController();
+		else if (event.type == SDL_QUIT)
+			Sys_Quit(0);
+	}
+	Xbox_OpenController();
+	if (!controller || !joy_enable.integer)
+		return;
+	SDL_GameControllerUpdate();
+
+	Xbox_KeyEdge(0, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A), K_JOY1, K_ENTER);
+	Xbox_KeyEdge(1, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B), K_JOY2, K_ESCAPE);
+	Xbox_KeyEdge(2, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X), K_JOY3, K_ENTER);
+	Xbox_KeyEdge(3, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_Y), K_JOY4, K_ESCAPE);
+	/* nxdk maps Original Xbox White/Black onto the SDL shoulder slots. */
+	Xbox_KeyEdge(4, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER), K_JOY5, K_LEFTARROW);
+	Xbox_KeyEdge(5, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER), K_JOY6, K_RIGHTARROW);
+	Xbox_KeyEdge(6, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSTICK), K_JOY7, 0);
+	Xbox_KeyEdge(7, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSTICK), K_JOY8, 0);
+	Xbox_KeyEdge(8, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP), K_AUX3, K_UPARROW);
+	Xbox_KeyEdge(9, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN), K_AUX4, K_DOWNARROW);
+	Xbox_KeyEdge(10, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT), K_AUX5, K_LEFTARROW);
+	Xbox_KeyEdge(11, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT), K_AUX6, K_RIGHTARROW);
+	Xbox_KeyEdge(12, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START), K_ESCAPE, K_ESCAPE);
+	Xbox_KeyEdge(13, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK), K_ESCAPE, K_ESCAPE);
+	lt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 8192;
+	rt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 8192;
+	Xbox_KeyEdge(14, lt, K_AUX1, 0);
+	Xbox_KeyEdge(15, rt, K_AUX2, 0);
+}
+
+void IN_Move(void)
+{
+	if (!controller || !joy_enable.integer)
+		return;
+	cl.cmd.forwardmove += Xbox_Axis(SDL_CONTROLLER_AXIS_LEFTY, joy_sensitivityforward.value, joy_deadzoneforward.value) * cl_forwardspeed.value;
+	cl.cmd.sidemove += Xbox_Axis(SDL_CONTROLLER_AXIS_LEFTX, joy_sensitivityside.value, joy_deadzoneside.value) * cl_sidespeed.value;
+	cl.viewangles[0] += Xbox_Axis(SDL_CONTROLLER_AXIS_RIGHTY, joy_sensitivitypitch.value, joy_deadzonepitch.value) * cl.realframetime * cl_pitchspeed.value;
+	cl.viewangles[1] += Xbox_Axis(SDL_CONTROLLER_AXIS_RIGHTX, joy_sensitivityyaw.value, joy_deadzoneyaw.value) * cl.realframetime * cl_yawspeed.value;
+	in_mouse_x = in_mouse_y = 0;
+	in_windowmouse_x = vid.width / 2;
+	in_windowmouse_y = vid.height / 2;
+}
+
+void VID_SetMouse(qboolean fullscreengrab, qboolean relative, qboolean hidecursor)
+{
+	(void)fullscreengrab; (void)relative; (void)hidecursor;
+}
+
+void VID_Init(void)
+{
+	Cvar_RegisterVariable(&joy_detected);
+	Cvar_RegisterVariable(&joy_enable);
+	Cvar_RegisterVariable(&joy_index);
+	Cvar_RegisterVariable(&joy_axisforward);
+	Cvar_RegisterVariable(&joy_axisside);
+	Cvar_RegisterVariable(&joy_axisup);
+	Cvar_RegisterVariable(&joy_axispitch);
+	Cvar_RegisterVariable(&joy_axisyaw);
+	Cvar_RegisterVariable(&joy_deadzoneforward);
+	Cvar_RegisterVariable(&joy_deadzoneside);
+	Cvar_RegisterVariable(&joy_deadzoneup);
+	Cvar_RegisterVariable(&joy_deadzonepitch);
+	Cvar_RegisterVariable(&joy_deadzoneyaw);
+	Cvar_RegisterVariable(&joy_sensitivityforward);
+	Cvar_RegisterVariable(&joy_sensitivityside);
+	Cvar_RegisterVariable(&joy_sensitivityup);
+	Cvar_RegisterVariable(&joy_sensitivitypitch);
+	Cvar_RegisterVariable(&joy_sensitivityyaw);
+	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
+		Con_Printf("SDL controller init failed: %s\n", SDL_GetError());
+	Xbox_OpenController();
+}
+
+int VID_InitMode(int fullscreen, int *width, int *height, int bpp, int refreshrate, int stereobuffer, int samples)
+{
+	(void)fullscreen; (void)bpp; (void)refreshrate; (void)stereobuffer; (void)samples;
+	*width = 640;
+	*height = 480;
+	if (!XVideoSetMode(640, 480, 32, REFRESH_DEFAULT))
+	{
+		Con_Print("XVideoSetMode failed\n");
+		return false;
+	}
+	if (!pbgl_started)
+	{
+		pbgl_init(GL_TRUE);
+		pbgl_started = true;
+	}
+	gl_platform = "pbGL/NV2A";
+	gl_platformextensions = "";
+	gl_videosyncavailable = false;
+	GL_Init();
+	vid_hidden = false;
+	vid_activewindow = true;
+	return true;
+}
+
+void VID_Shutdown(void)
+{
+	if (controller)
+	{
+		SDL_GameControllerClose(controller);
+		controller = NULL;
+	}
+	if (pbgl_started)
+	{
+		pbgl_shutdown();
+		pbgl_started = false;
+	}
+	gl_extensions = "";
+	gl_platform = "";
+	gl_platformextensions = "";
+}
+
+int VID_SetGamma(unsigned short *ramps, int rampsize)
+{
+	(void)ramps; (void)rampsize;
+	return false;
+}
+
+int VID_GetGamma(unsigned short *ramps, int rampsize)
+{
+	(void)ramps; (void)rampsize;
+	return false;
+}
+
+void VID_Finish(void)
+{
+	vid_hidden = false;
+	vid_activewindow = true;
+	if (r_render.integer)
+	{
+		if (r_speeds.integer == 2 || gl_finish.integer)
+			qglFinish();
+		pbgl_swap_buffers();
+	}
+}
+
+size_t VID_ListModes(vid_mode_t *modes, size_t maxcount)
+{
+	if (!modes || maxcount == 0)
+		return 0;
+	modes[0].width = 640;
+	modes[0].height = 480;
+	modes[0].bpp = 32;
+	modes[0].refreshrate = 60;
+	modes[0].pixelheight_num = 1;
+	modes[0].pixelheight_denom = 1;
+	return 1;
+}
