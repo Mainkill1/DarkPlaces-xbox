@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build-game:
@@ -74,13 +75,40 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang llvm lld cmake flex bison pkgconf unzip curl
 
-      - name: Download and verify Nexuiz Classic 2.5.2
+      - name: Download verified Nexuiz archive part 00
+        uses: actions/download-artifact@v4
+        with:
+          name: nexuiz-part00
+          run-id: 35155351439
+          github-token: ${{ github.token }}
+          path: deps/nexuiz-parts/00
+
+      - name: Download verified Nexuiz archive part 01
+        uses: actions/download-artifact@v4
+        with:
+          name: nexuiz-part01
+          run-id: 35155351439
+          github-token: ${{ github.token }}
+          path: deps/nexuiz-parts/01
+
+      - name: Download verified Nexuiz archive part 02
+        uses: actions/download-artifact@v4
+        with:
+          name: nexuiz-part02
+          run-id: 35155351439
+          github-token: ${{ github.token }}
+          path: deps/nexuiz-parts/02
+
+      - name: Reassemble and verify Nexuiz Classic 2.5.2
         shell: bash
         run: |
           set -euo pipefail
-          url='https://downloads.sourceforge.net/project/nexuiz/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip'
-          curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 --max-time 900 \
-            -A 'Mozilla/5.0' -o "$RUNNER_TEMP/nexuiz-252.zip" "$url"
+          cat deps/nexuiz-parts/00/nexuiz.part00 \
+              deps/nexuiz-parts/01/nexuiz.part01 \
+              deps/nexuiz-parts/02/nexuiz.part02 > "$RUNNER_TEMP/nexuiz-252.zip"
+          expected="$(awk '$2=="nexuiz-252.zip" {print $1}' deps/nexuiz-parts/02/SHA256SUMS)"
+          test -n "$expected"
+          echo "$expected  $RUNNER_TEMP/nexuiz-252.zip" | sha256sum -c -
           echo '${{ steps.pins.outputs.nexuiz_md5 }}  '"$RUNNER_TEMP/nexuiz-252.zip" | md5sum -c -
           mkdir -p deps/nexuiz
           unzip -q "$RUNNER_TEMP/nexuiz-252.zip" -d deps/nexuiz
