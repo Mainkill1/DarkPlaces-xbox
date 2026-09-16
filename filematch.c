@@ -1,11 +1,14 @@
 
-#ifdef WIN32
+#if defined(WIN32) || defined(DP_PLATFORM_XBOX)
 #include <windows.h>
 #else
 #include <dirent.h>
 #endif
 
 #include "darkplaces.h"
+#ifdef DP_PLATFORM_XBOX
+#include "xbox/platform/platform.h"
+#endif
 
 #ifdef WIN32
 #include "utf8lib.h"
@@ -165,7 +168,23 @@ static void adddirentry(stringlist_t *list, const char *path, const char *name)
 		stringlistappend(list, temp);
 	}
 }
-#ifdef WIN32
+#if defined(DP_PLATFORM_XBOX)
+void listdirectory(stringlist_t *list, const char *basepath, const char *path)
+{
+	char pattern[MAX_OSPATH], native[MAX_OSPATH];
+	WIN32_FIND_DATAA entry;
+	HANDLE handle;
+	int length = dpsnprintf(pattern, sizeof(pattern), "%s%s*", basepath, path);
+	if (length < 0 || (size_t)length >= sizeof(pattern) ||
+		!DP_XboxNativePath(native, sizeof(native), pattern)) return;
+	handle = FindFirstFileA(native, &entry);
+	if (handle == INVALID_HANDLE_VALUE) return;
+	do {
+		adddirentry(list, path, entry.cFileName);
+	} while (FindNextFileA(handle, &entry));
+	FindClose(handle);
+}
+#elif defined(WIN32)
 void listdirectory(stringlist_t *list, const char *basepath, const char *path)
 {
 	#define BUFSIZE 4096

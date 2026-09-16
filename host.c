@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // host.c -- coordinates spawning and killing of local servers
 
 #include "quakedef.h"
+#ifdef DP_PLATFORM_XBOX
+#include "xbox/platform/platform.h"
+#endif
 #include "cl_attract.h"
 
 #include <time.h>
@@ -461,6 +464,10 @@ void Host_Init (void)
 
 	// initialize filesystem (including fs_basedir, fs_gamedir, -game, scr_screenshot_name, gamename)
 	FS_Init();
+#ifdef DP_PLATFORM_XBOX
+	DP_XboxStage("filesystem-mounted");
+	Con_Print("XBOX_GAME_FS_READY\n");
+#endif
 
 	// initialize process nice level
 	Sys_InitProcessNice();
@@ -542,12 +549,14 @@ void Host_Init (void)
 	}
 #endif
 
+#ifndef DP_XBOX_ENGINE_BOOTSTRAP
 	if (cls.state == ca_dedicated || Sys_CheckParm("-listen"))
 	if (!sv.active && !cls.demoplayback && !cls.connect_trying)
 	{
 		Cbuf_AddText(cmd_local, "startmap_dm\n");
 		Cbuf_Execute(cmd_local->cbuf);
 	}
+#endif /* bootstrap stops at engine initialization, not an implicit map load */
 
 	if (!sv.active && !cls.demoplayback && !cls.connect_trying)
 	{

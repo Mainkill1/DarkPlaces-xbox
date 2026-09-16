@@ -23,9 +23,15 @@
 */
 
 #include <limits.h>
-#include <fcntl.h>
+#if defined(DP_PLATFORM_XBOX)
+# include "xbox/platform/platform.h"
+#else
+# include <fcntl.h>
+#endif
 
-#ifdef WIN32
+#if defined(DP_PLATFORM_XBOX)
+/* All low-level files use SDL RWops and native path/attribute helpers. */
+#elif defined(WIN32)
 # include <direct.h>
 # include <io.h>
 # include <shlobj.h>
@@ -94,14 +100,29 @@ typedef SDL_RWops *filedesc_t;
 # define FILEDESC_CLOSE SDL_RWclose
 # define FILEDESC_SEEK SDL_RWseek
 static filedesc_t FILEDESC_DUP(const char *filename, filedesc_t fd) {
-	filedesc_t new_fd = SDL_RWFromFile(filename, "rb");
-	if (SDL_RWseek(new_fd, SDL_RWseek(fd, 0, RW_SEEK_CUR), RW_SEEK_SET) < 0) {
+	filedesc_t new_fd;
+	Sint64 position;
+#if defined(DP_PLATFORM_XBOX)
+	char native[MAX_OSPATH];
+	if (!DP_XboxNativePath(native, sizeof(native), filename)) return NULL;
+	filename = native;
+#endif
+	if (!fd) return NULL;
+	position = SDL_RWtell(fd);
+	if (position < 0) return NULL;
+	new_fd = SDL_RWFromFile(filename, "rb");
+	if (!new_fd) return NULL;
+	if (SDL_RWseek(new_fd, position, RW_SEEK_SET) < 0) {
 		SDL_RWclose(new_fd);
 		return NULL;
 	}
 	return new_fd;
 }
+#if defined(DP_PLATFORM_XBOX)
+# define unlink(name) DP_XboxRemoveFile(name)
+#else
 # define unlink(name) Con_DPrintf("Sorry, no unlink support when trying to unlink %s.\n", (name))
+#endif
 #else
 typedef int filedesc_t;
 # define FILEDESC_INVALID -1
@@ -163,8 +184,8 @@ static fs_offset_t WriteAll(const filedesc_t fd, const void *const buf, const si
 	do
 	{
 		const fs_offset_t result = FILEDESC_WRITE(fd, p + cursor, length - cursor);
-		if (result < 0) // Error
-			return result;
+		if (result <= 0) // SDL reports write failure as zero; avoid an infinite loop.
+			return result < 0 ? result : -1;
 		cursor += result;
 	} while (cursor < length);
 	return cursor;
@@ -487,6 +508,14 @@ static int (ZEXPORT *qz_deflate) (z_stream* strm, int flush);
         qz_inflateInit2_((strm), (windowBits), ZLIB_VERSION, sizeof(z_stream))
 #define qz_deflateInit2(strm, level, method, windowBits, memLevel, strategy) \
         qz_deflateInit2_((strm), (level), (method), (windowBits), (memLevel), (strategy), ZLIB_VERSION, sizeof(z_stream))
+
+#ifdef DP_PLATFORM_XBOX
+#include "xbox/platform/zalloc.h"
+#undef qz_inflateInit2
+#undef qz_deflateInit2
+#define qz_inflateInit2 DP_XboxInflateInit2
+#define qz_deflateInit2 DP_XboxDeflateInit2
+#endif
 
 #ifndef LINK_TO_ZLIB
 //        qz_deflateInit_((strm), (level), ZLIB_VERSION, sizeof(z_stream))
@@ -1005,7 +1034,9 @@ static void FS_mkdir (const char *path)
 
 	WIDE(path, pathw);
 
-#ifdef WIN32
+#if defined(DP_PLATFORM_XBOX)
+	if (!DP_XboxMakeDirectory(path))
+#elif defined(WIN32)
 	if (_wmkdir(pathw) == -1)
 #else
 	if (mkdir(path, 0777) == -1)
@@ -1943,6 +1974,7 @@ static void COM_InsertFlags(const char *buf) {
 	sys.argc = i;
 }
 
+#if !defined(DP_PLATFORM_XBOX)
 static int FS_ChooseUserDir(userdirmode_t userdirmode, char *userdir, size_t userdirsize)
 {
 #if defined(__IPHONEOS__)
@@ -2114,6 +2146,8 @@ static int FS_ChooseUserDir(userdirmode_t userdirmode, char *userdir, size_t use
 #endif
 }
 
+#endif /* !DP_PLATFORM_XBOX: desktop user-directory discovery */
+
 void FS_Init_Commands(void)
 {
 	Cvar_RegisterVariable (&scr_screenshot_name);
@@ -2218,7 +2252,9 @@ static void FS_Init_Dir (void)
 		*fs_userdir = 0; // user wants roaming installation, no userdir
 	else
 	{
-#ifdef DP_FS_USERDIR
+#if defined(DP_PLATFORM_XBOX)
+		dp_strlcpy(fs_userdir, DP_XboxWriteRoot(), sizeof(fs_userdir));
+#elif defined(DP_FS_USERDIR)
 		dp_strlcpy(fs_userdir, DP_FS_USERDIR, sizeof(fs_userdir));
 #else
 		int dirmode;
@@ -2382,6 +2418,25 @@ void FS_Shutdown (void)
 
 static filedesc_t FS_SysOpenFiledesc(const char *filepath, const char *mode, qbool nonblocking)
 {
+#if defined(DP_PLATFORM_XBOX)
+	char native[MAX_OSPATH], cleanmode[4];
+	const char *p;
+	qbool update = false;
+	(void)nonblocking;
+	if (!mode || !mode[0] || !strchr("rwa", mode[0])) return FILEDESC_INVALID;
+	for (p = mode + 1; *p; ++p) {
+		if (*p == '+') update = true;
+		else if (*p != 'b') return FILEDESC_INVALID; /* locks are not emulated */
+	}
+	if ((Sys_CheckParm("-readonly") || !DP_XboxWritesAvailable()) &&
+		(mode[0] != 'r' || update)) return FILEDESC_INVALID;
+	cleanmode[0] = mode[0];
+	cleanmode[1] = 'b';
+	cleanmode[2] = update ? '+' : '\0';
+	cleanmode[3] = '\0';
+	if (!DP_XboxNativePath(native, sizeof(native), filepath)) return FILEDESC_INVALID;
+	return SDL_RWFromFile(native, cleanmode);
+#else
 	filedesc_t handle = FILEDESC_INVALID;
 	int mod, opt;
 	unsigned int ind;
@@ -2463,6 +2518,7 @@ static filedesc_t FS_SysOpenFiledesc(const char *filepath, const char *mode, qbo
 #endif
 
 	return handle;
+#endif
 }
 
 int FS_SysOpenFD(const char *filepath, const char *mode, qbool nonblocking)
@@ -3708,7 +3764,10 @@ Look for a file in the filesystem only
 */
 int FS_SysFileType (const char *path)
 {
-#ifdef WIN32
+#if defined(DP_PLATFORM_XBOX)
+	int type = DP_XboxPathType(path);
+	return type == 2 ? FS_FILETYPE_DIRECTORY : type == 1 ? FS_FILETYPE_FILE : FS_FILETYPE_NONE;
+#elif defined(WIN32)
 	// Sajt - some older sdks are missing this define
 # ifndef INVALID_FILE_ATTRIBUTES
 #  define INVALID_FILE_ATTRIBUTES ((DWORD)-1)

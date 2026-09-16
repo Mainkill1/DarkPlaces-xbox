@@ -21,9 +21,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // common.c -- misc functions used in client and server
 
 #include <stdlib.h>
+#if !defined(DP_PLATFORM_XBOX)
 #include <fcntl.h>
 #ifndef WIN32
 #include <unistd.h>
+#endif
 #endif
 
 #include "quakedef.h"

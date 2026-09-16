@@ -5,7 +5,12 @@ cvar_t taskqueue_minthreads = {CF_CLIENT | CF_SERVER | CF_ARCHIVE, "taskqueue_mi
 cvar_t taskqueue_maxthreads = {CF_CLIENT | CF_SERVER | CF_ARCHIVE, "taskqueue_maxthreads", "32", "maximum number of threads to start up as needed based on task count"};
 cvar_t taskqueue_tasksperthread = {CF_CLIENT | CF_SERVER | CF_ARCHIVE, "taskqueue_tasksperthread", "4000", "expected amount of work that a single thread can do in a frame - the number of threads being used depends on the average workload in recent frames"};
 
+#if defined(DP_PLATFORM_XBOX)
+/* Engine jobs run on the game thread. SDK USB/audio/network threads are separate. */
+#define MAXTHREADS 1
+#else
 #define MAXTHREADS 1024
+#endif
 #define RECENTFRAMES 64 // averaging thread activity over this many frames to decide how many threads we need
 #define THREADTASKS 256 // thread can hold this many tasks in its own queue
 #define THREADBATCH 64 // thread will run this many tasks before checking status again
@@ -52,6 +57,11 @@ static taskqueue_state_t taskqueue_state;
 
 void TaskQueue_Init(void)
 {
+#ifdef DP_PLATFORM_XBOX
+	taskqueue_minthreads.flags |= CF_READONLY;
+	taskqueue_maxthreads.flags |= CF_READONLY;
+	taskqueue_maxthreads.string = "0";
+#endif
 	Cvar_RegisterVariable(&taskqueue_minthreads);
 	Cvar_RegisterVariable(&taskqueue_maxthreads);
 	Cvar_RegisterVariable(&taskqueue_tasksperthread);
@@ -217,9 +227,6 @@ void TaskQueue_Frame(qbool shutdown)
 	int maxthreads = bound(0, taskqueue_maxthreads.integer, MAXTHREADS);
 	int numthreads = maxthreads;
 	int tasksperthread = bound(10, taskqueue_tasksperthread.integer, 100000);
-#ifdef THREADDISABLE
-	numthreads = 0;
-#endif
 
 	Thread_AtomicLock(&taskqueue_state.command_lock);
 	taskqueue_state.tasks_recentframesindex = (taskqueue_state.tasks_recentframesindex + 1) % RECENTFRAMES;
@@ -232,7 +239,11 @@ void TaskQueue_Frame(qbool shutdown)
 	Thread_AtomicUnlock(&taskqueue_state.command_lock);
 
 	numthreads = taskqueue_state.tasks_averageperframe / tasksperthread;
-	numthreads = bound(taskqueue_minthreads.integer, numthreads, taskqueue_maxthreads.integer);
+	numthreads = bound(bound(0, taskqueue_minthreads.integer, maxthreads), numthreads, maxthreads);
+#ifdef THREADDISABLE
+	/* Enforce AFTER workload sizing, otherwise the assignment above undoes it. */
+	numthreads = 0;
+#endif
 
 	if (shutdown)
 		numthreads = 0;

@@ -64,3 +64,8 @@ wasm/preload/*
 
 # Controller diagnostic output; not the primary foundation smoke
 /xbox/inputcheck/disc/
+
+# Native engine candidate (separate from diagnostic objects and content inputs)
+/xbox/game/build/
+/xbox/game/main.exe.manifest
+/xbox/game/main.map

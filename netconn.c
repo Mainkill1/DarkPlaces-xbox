@@ -3873,6 +3873,11 @@ void NetConn_ServerFrame(void)
 #ifdef CONFIG_MENU
 void NetConn_QueryMasters(qbool querydp, qbool queryqw)
 {
+#ifdef DP_PLATFORM_XBOX
+	(void)querydp; (void)queryqw;
+	Con_Print("Xbox LAN profile: Internet master queries are disabled. Use LAN discovery or an IPv4 address.\n");
+#else
+
 	unsigned i, j;
 	unsigned masternum;
 	lhnetaddress_t masteraddress;
@@ -3978,11 +3983,17 @@ void NetConn_QueryMasters(qbool querydp, qbool queryqw)
 		Con_Print(CON_ERROR "Unable to query master servers, no suitable network sockets active.\n");
 		dp_strlcpy(cl_connect_status, "No network", sizeof(cl_connect_status));
 	}
+#endif
 }
 #endif
 
 void NetConn_Heartbeat(int priority)
 {
+#ifdef DP_PLATFORM_XBOX
+	(void)priority;
+	/* No unsolicited master-server advertising from an Option B game. */
+#else
+
 	lhnetaddress_t masteraddress;
 	uint8_t masternum;
 	lhnetsocket_t *mysocket;
@@ -4012,6 +4023,7 @@ void NetConn_Heartbeat(int priority)
 			&& (mysocket = NetConn_ChooseServerSocketForAddress(&masteraddress)))
 				NetConn_WriteString(mysocket, "\377\377\377\377heartbeat DarkPlaces\x0A", &masteraddress);
 	}
+#endif
 }
 
 static void Net_Heartbeat_f(cmd_state_t *cmd)

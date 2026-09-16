@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // console.c
 
-#if !defined(WIN32) || defined(__MINGW32__)
+#if !defined(DP_PLATFORM_XBOX) && (!defined(WIN32) || defined(__MINGW32__))
 # include <unistd.h>
 #endif
 #include <time.h>

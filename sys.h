@@ -30,7 +30,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
     DP_OS_STR	- "identifier" of the OS, more suited for code to use
     DP_ARCH_STR	- "identifier" of the processor architecture
  */
-#if defined(__ANDROID__) /* must come first because it also defines linux */
+#if defined(DP_PLATFORM_XBOX)
+# define DP_OS_NAME "Original Xbox"
+# define DP_OS_STR "xbox"
+#elif defined(__ANDROID__) /* also defines linux */
 # define DP_OS_NAME		"Android"
 # define DP_OS_STR		"android"
 # define USE_GLES2		1

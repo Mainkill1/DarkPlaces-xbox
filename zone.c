@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifdef WIN32
 #include <windows.h>
 #include <winbase.h>
-#else
+#elif !defined(DP_PLATFORM_XBOX)
 #include <unistd.h>
 #endif
 
@@ -915,7 +915,13 @@ void Memory_Init_Commands (void)
 	Cvar_RegisterVariable (&sys_memsize_physical);
 	Cvar_RegisterVariable (&sys_memsize_virtual);
 
-#if defined(WIN32)
+#if defined(DP_PLATFORM_XBOX)
+	/* Unknown is intentional: the desktop address-space guess and /proc probe
+	 * do not measure Xbox memory. The configured 64 MiB target is not a sample
+	 * of free/available RAM and must not be published as one. */
+	Cvar_SetQuick(&sys_memsize_physical, "");
+	Cvar_SetQuick(&sys_memsize_virtual, "");
+#elif defined(WIN32)
 #ifdef _WIN64
 	{
 		MEMORYSTATUSEX status;

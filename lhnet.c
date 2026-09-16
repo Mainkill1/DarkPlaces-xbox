@@ -27,7 +27,13 @@
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
-#ifndef WIN32
+#if defined(DP_PLATFORM_XBOX)
+#include <lwip/sockets.h>
+#include <lwip/inet.h>
+#include <lwip/netdb.h>
+#include <errno.h>
+#include "xbox/platform/network.h"
+#elif !defined(WIN32)
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -59,7 +65,12 @@
 
 #include "lhnet.h"
 
-#if defined(WIN32)
+#if defined(DP_PLATFORM_XBOX)
+#define ioctlsocket lwip_ioctl
+#define closesocket lwip_close
+#define SOCKETERRNO errno
+#define SOCKLEN_T socklen_t
+#elif defined(WIN32)
 // as of Visual Studio 2015, EWOULDBLOCK and ECONNREFUSED are real things, with different values than we want when talking to WinSock, so we have to undef them here or change the rest of the code.
 #undef EWOULDBLOCK
 #undef ECONNREFUSED
@@ -380,6 +391,45 @@ int LHNETADDRESS_FromString(lhnetaddress_t *vaddress, const char *string, int de
 #else
 int LHNETADDRESS_FromString(lhnetaddress_t *vaddress, const char *string, int defaultport)
 {
+#if defined(DP_PLATFORM_XBOX)
+	lhnetaddressnative_t *address = (lhnetaddressnative_t *)vaddress;
+	const char *p;
+	unsigned int octets[4], value, port;
+	int i;
+	if (!address || !string || !*string || defaultport < 0 || defaultport > 65535) return 0;
+	memset(address, 0, sizeof(*address));
+	p = string;
+	port = (unsigned int)defaultport;
+	if (!strncmp(p, "local", 5) && (p[5] == '\0' || p[5] == ':')) {
+		p += 5;
+		address->addresstype = LHNETADDRESSTYPE_LOOP;
+	} else {
+		for (i = 0; i < 4; ++i) {
+			if (*p < '0' || *p > '9') return 0;
+			value = 0;
+			do { value = value * 10 + (unsigned int)(*p++ - '0'); if (value > 255) return 0; }
+			while (*p >= '0' && *p <= '9');
+			octets[i] = value;
+			if (i < 3 && *p++ != '.') return 0;
+		}
+		address->addresstype = LHNETADDRESSTYPE_INET4;
+		address->addr.in.sin_family = AF_INET;
+		address->addr.in.sin_addr.s_addr = htonl((octets[0] << 24) | (octets[1] << 16) | (octets[2] << 8) | octets[3]);
+	}
+	if (*p == ':') {
+		++p;
+		if (*p < '0' || *p > '9') return 0;
+		port = 0;
+		do { port = port * 10 + (unsigned int)(*p++ - '0'); if (port > 65535) return 0; }
+		while (*p >= '0' && *p <= '9');
+	}
+	if (*p) return 0;
+	address->port = (int)port;
+	if (address->addresstype == LHNETADDRESSTYPE_INET4)
+		address->addr.in.sin_port = htons((unsigned short)port);
+	return 1;
+#else
+
 	lhnetaddressnative_t *address = (lhnetaddressnative_t *)vaddress;
 	int i, port, namelen, d1, d2, d3, d4;
 	struct hostent *hostentry;
@@ -534,6 +584,7 @@ int LHNETADDRESS_FromString(lhnetaddress_t *vaddress, const char *string, int de
 	namecache[namecacheposition].address.addresstype = LHNETADDRESSTYPE_NONE;
 	namecacheposition = (namecacheposition + 1) % MAX_NAMECACHE;
 	return 0;
+#endif
 }
 #endif
 
@@ -729,6 +780,9 @@ void LHNET_Init(void)
 	List_Create(&lhnet_socketlist.list);
 	List_Create(&lhnet_packetlist.list);
 	lhnet_active = 1;
+#ifdef DP_PLATFORM_XBOX
+	DP_XboxNetworkStart();
+#endif
 #ifdef WIN32
 	lhnet_didWSAStartup = !WSAStartup(MAKEWORD(1, 1), &lhnet_winsockdata);
 	if (!lhnet_didWSAStartup)
@@ -834,6 +888,10 @@ lhnetsocket_t *LHNET_OpenSocket_Connectionless(lhnetaddress_t *address)
 	lhnetsocket_t *lhnetsocket, *s;
 	if (!address)
 		return NULL;
+#ifdef DP_PLATFORM_XBOX
+	if (address->addresstype != LHNETADDRESSTYPE_LOOP && !DP_XboxNetworkReady())
+		return NULL;
+#endif
 	lhnetsocket = (lhnetsocket_t *)Z_Malloc(sizeof(*lhnetsocket));
 	if (lhnetsocket)
 	{
@@ -887,7 +945,10 @@ lhnetsocket_t *LHNET_OpenSocket_Connectionless(lhnetaddress_t *address)
 #ifdef WIN32
 					u_long _false = 0;
 #endif
-#ifdef MSG_DONTWAIT
+#if defined(DP_PLATFORM_XBOX)
+					unsigned long nonblocking = 1;
+					if (lwip_ioctl(lhnetsocket->inetsocket, FIONBIO, &nonblocking) != -1)
+#elif defined(MSG_DONTWAIT)
 					if (1)
 #else
 #ifdef WIN32
