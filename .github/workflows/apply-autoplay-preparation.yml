@@ -19,7 +19,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
-      - name: Verify and apply reviewed local patch
+      - name: Verify and apply non-workflow source changes
         run: |
           python3 - <<'PY'
           import base64, gzip, hashlib, pathlib, subprocess
@@ -30,10 +30,11 @@ jobs:
           assert hashlib.sha256(patch).hexdigest() == '691df67c24abeba659deb1b3e645ac5a7fb61caa818d05102826b3eb71531ac7'
           target = pathlib.Path('/tmp/autoplay-reviewed.patch')
           target.write_bytes(patch)
-          subprocess.run(['git', 'apply', '--check', str(target)], check=True)
-          subprocess.run(['git', 'apply', '--index', str(target)], check=True)
+          exclusion = '--exclude=.github/workflows/*'
+          subprocess.run(['git', 'apply', '--check', exclusion, str(target)], check=True)
+          subprocess.run(['git', 'apply', '--index', exclusion, str(target)], check=True)
           PY
-          git rm -r .github/_autoplay_patch .github/workflows/apply-autoplay-preparation.yml
+          git rm -r .github/_autoplay_patch
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m "feat: implement unattended demo loop and controller integration"

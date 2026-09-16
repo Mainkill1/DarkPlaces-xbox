@@ -7,6 +7,7 @@ on:
       - 'cl_attract*'
       - 'cl_demo.c'
       - 'cl_main.c'
+      - 'cl_parse.c'
       - 'vid_sdl.c'
       - 'vid_shared.c'
       - 'host.c'
@@ -21,30 +22,67 @@ permissions:
   contents: read
 
 jobs:
-  source-and-tests:
+  behavior:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Read pinned SDK revision
+      - name: Install host controller test prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsdl2-dev python3
+      - name: Test actual policy, engine adapter, virtual controllers and packaging
+        env:
+          DP_REQUIRE_SDL_TESTS: '1'
+        run: |
+          mkdir -p build/autoplay-evidence
+          set -o pipefail
+          python3 -m unittest discover -s tests -p 'test_*.py' -v 2>&1 | tee build/autoplay-evidence/host-tests.txt
+      - name: Capture exact source identity
+        run: |
+          git rev-parse HEAD > build/autoplay-evidence/source-revision.txt
+          git archive --format=tar.gz HEAD -o build/autoplay-evidence/darkplaces-source.tar.gz
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autoplay-host-evidence
+          if-no-files-found: error
+          path: build/autoplay-evidence/
+
+  nxdk-controller-link:
+    name: Link actual SDL controller adapter into nxdk input-check XBE
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read canonical nxdk pin
         id: pin
-        run: echo "sha=$(cat xbox/nxdk.version)" >> "$GITHUB_OUTPUT"
+        shell: bash
+        run: |
+          sha="$(cat xbox/nxdk.version)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           repository: XboxDev/nxdk
           ref: ${{ steps.pin.outputs.sha }}
           submodules: recursive
           path: nxdk
-      - name: Archive exact source inputs
+      - name: Install SDK host prerequisites
         run: |
-          mkdir -p build/autoplay-evidence
-          git archive --format=tar.gz HEAD -o build/autoplay-evidence/darkplaces-source.tar.gz
-          tar -czf build/autoplay-evidence/nxdk-reference.tar.gz nxdk/lib/sdl/SDL2/include nxdk/lib/sdl/SDL2/src/joystick nxdk/lib/sdl/SDL2/src/gamecontroller* nxdk/samples nxdk/lib/usb nxdk/Makefile nxdk/lib/sdl/Makefile nxdk/lib/hal
-          git rev-parse HEAD > build/autoplay-evidence/source-revision.txt
-      - name: Host regression tests
-        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake flex bison clang llvm lld git python3 pkgconf
+      - name: Build the input check, not the DarkPlaces engine
+        run: make -C xbox/inputcheck NXDK_DIR="$GITHUB_WORKSPACE/nxdk" V=1 -j2
+      - name: Record gate and artifact hashes outside the disc directory
+        run: |
+          mkdir -p build/controller-evidence
+          cp xbox/inputcheck/disc/default.xbe xbox/inputcheck/controller-check.iso build/controller-evidence/
+          cd build/controller-evidence
+          sha256sum default.xbe controller-check.iso > SHA256SUMS
+          printf 'gate=controller-adapter-linked\nengine-linked=false\nxbox-boot-tested=false\n' > GATE.txt
+          git rev-parse HEAD > source-revision.txt
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: autoplay-source-evidence
+          name: xbox-controller-check-not-engine
           if-no-files-found: error
-          path: build/autoplay-evidence/
+          path: build/controller-evidence/
