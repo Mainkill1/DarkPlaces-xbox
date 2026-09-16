@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_main.c  -- client main loop
 
 #include "quakedef.h"
+#include "cl_attract.h"
 #include "cl_collision.h"
 #include "cl_video.h"
 #include "image.h"
@@ -391,6 +392,7 @@ void CL_DisconnectEx(qbool kicked, const char *fmt, ... )
 
 	Curl_Clear_forthismap();
 
+	CL_Attract_Disconnect();
 	Con_DPrintf("CL_Disconnect\n");
 
 	Cvar_SetValueQuick(&csqc_progcrc, -1);

@@ -21,6 +21,7 @@
 */
 
 #include "quakedef.h"
+#include "cl_attract.h"
 #include "cl_video.h"
 #include "utf8lib.h"
 #include "csprogs.h"
@@ -1849,6 +1850,9 @@ Key_Event (int key, int ascii, qbool down)
 		Key_EventQueue_Add(key, ascii, down);
 		return;
 	}
+
+	if (CL_Attract_KeyEvent(key, down))
+		return;
 
 	// get key binding
 	bind = keybindings[key_bmap][key];

@@ -61,3 +61,6 @@ wasm/preload/*
 /evidence/local/
 *.xbe
 *.iso
+
+# Controller diagnostic output; not the primary foundation smoke
+/xbox/inputcheck/disc/

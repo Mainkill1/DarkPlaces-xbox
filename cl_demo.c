@@ -19,6 +19,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include "quakedef.h"
+#include "cl_attract.h"
+#include "xbox/attract_policy.h"
 
 #ifdef CONFIG_VIDEO_CAPTURE
 extern cvar_t cl_capturevideo;
@@ -51,10 +53,10 @@ void CL_NextDemo (void)
 {
 	char	str[MAX_INPUTLINE];
 
-	if (cls.demonum == -1)
+	if (cls.demonum < 0)
 		return;		// don't play demos
 
-	if (!cls.demos[cls.demonum][0] || cls.demonum == MAX_DEMOS)
+	if (cls.demonum >= MAX_DEMOS || !cls.demos[cls.demonum][0])
 	{
 		cls.demonum = 0;
 		if (!cls.demos[cls.demonum][0])
@@ -188,6 +190,7 @@ void CL_ReadDemoMessage(void)
 {
 	int i;
 	float f;
+	fs_offset_t read_count;
 
 	if (!cls.demoplayback)
 		return;
@@ -252,16 +255,31 @@ void CL_ReadDemoMessage(void)
 			return;
 
 		// get the next message
-		FS_Read(cls.demofile, &cl_message.cursize, 4);
+		read_count = FS_Read(cls.demofile, &cl_message.cursize, 4);
+		if (read_count != 4)
+		{
+			if (!read_count) CL_Attract_DemoEnded();
+			else CL_Attract_Error("truncated demo record length");
+			CL_Disconnect();
+			return;
+		}
 		cl_message.cursize = LittleLong(cl_message.cursize);
 		if(cl_message.cursize & DEMOMSG_CLIENT_TO_SERVER) // This is a client->server message! Ignore for now!
 		{
 			// skip over demo packet
-			FS_Seek(cls.demofile, 12 + (cl_message.cursize & (~DEMOMSG_CLIENT_TO_SERVER)), SEEK_CUR);
+			fs_offset_t remaining = FS_FileSize(cls.demofile) - FS_Tell(cls.demofile);
+			fs_offset_t skip = 12 + (fs_offset_t)(cl_message.cursize & (~DEMOMSG_CLIENT_TO_SERVER));
+			if (skip > remaining || FS_Seek(cls.demofile, skip, SEEK_CUR) < 0)
+			{
+				CL_Attract_Error("truncated client-to-server demo record");
+				CL_Disconnect();
+				return;
+			}
 			continue;
 		}
-		if (cl_message.cursize > cl_message.maxsize)
+		if (cl_message.cursize < 0 || cl_message.cursize > cl_message.maxsize)
 		{
+			CL_Attract_Error("invalid demo record size");
 			CL_DisconnectEx(false, "Demo message (%i) > cl_message.maxsize (%i)", cl_message.cursize, cl_message.maxsize);
 			cl_message.cursize = 0;
 			return;
@@ -269,7 +287,12 @@ void CL_ReadDemoMessage(void)
 		VectorCopy(cl.mviewangles[0], cl.mviewangles[1]);
 		for (i = 0;i < 3;i++)
 		{
-			FS_Read(cls.demofile, &f, 4);
+			if (FS_Read(cls.demofile, &f, 4) != 4)
+			{
+				CL_Attract_Error("truncated demo view angles");
+				CL_Disconnect();
+				return;
+			}
 			cl.mviewangles[0][i] = LittleFloat(f);
 		}
 
@@ -290,6 +313,7 @@ void CL_ReadDemoMessage(void)
 		}
 		else
 		{
+			CL_Attract_Error("truncated demo payload");
 			CL_Disconnect();
 			return;
 		}
@@ -413,8 +437,10 @@ void CL_Record_f(cmd_state_t *cmd)
 void CL_PlayDemo(const char *demo)
 {
 	char name[MAX_QPATH];
-	int c;
-	qbool neg = false;
+	int track;
+	char header[16];
+	fs_offset_t header_size;
+	size_t header_bytes;
 	qfile_t *f;
 
 	// open the demo file
@@ -425,6 +451,17 @@ void CL_PlayDemo(const char *demo)
 	{
 		Con_Printf(CON_ERROR "ERROR: couldn't open %s.\n", name);
 		cls.demonum = -1;		// stop demo loop
+		return;
+	}
+
+	// Parse before disconnecting or mutating demo state; malformed headers must not hang.
+	header_size = FS_Read(f, header, sizeof(header));
+	if (header_size <= 0 || !DP_DemoTrackHeader(header, (size_t)header_size, &track, &header_bytes)
+		|| FS_Seek(f, (fs_offset_t)header_bytes, SEEK_SET) < 0)
+	{
+		FS_Close(f);
+		Con_Printf(CON_ERROR "Malformed demo header: %s\n", name);
+		cls.demonum = -1;
 		return;
 	}
 
@@ -444,16 +481,7 @@ void CL_PlayDemo(const char *demo)
 
 	cls.demoplayback = true;
 	cls.state = ca_connected;
-	cls.forcetrack = 0;
-
-	while ((c = FS_Getc (cls.demofile)) != '\n')
-		if (c == '-')
-			neg = true;
-		else
-			cls.forcetrack = cls.forcetrack * 10 + (c - '0');
-
-	if (neg)
-		cls.forcetrack = -cls.forcetrack;
+	cls.forcetrack = track;
 
 	cls.demostarting = false;
 }
@@ -655,6 +683,7 @@ static void CL_Startdemos_f(cmd_state_t *cmd)
 {
 	int		i, c;
 
+	if (CL_Attract_Enabled()) return; // this profile owns demo lifecycle
 	if (cls.state == ca_dedicated || Sys_CheckParm("-listen") || Sys_CheckParm("-benchmark") || Sys_CheckParm("-demo") || Sys_CheckParm("-capturedemo"))
 		return;
 
@@ -736,6 +765,7 @@ static void CL_PauseDemo_f(cmd_state_t *cmd)
 
 void CL_Demo_Init(void)
 {
+	CL_Attract_Init();
 	Cmd_AddCommand(CF_CLIENT, "record", CL_Record_f, "record a demo");
 	Cmd_AddCommand(CF_CLIENT, "stop", CL_Stop_f, "stop recording or playing a demo");
 	Cmd_AddCommand(CF_CLIENT, "playdemo", CL_PlayDemo_f, "watch a demo file");
