@@ -65,6 +65,7 @@ CFLAGS += -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -I$(VORBIS_DIR)/lib
 CFLAGS += -I$(PBGL_DIR)/include
 CFLAGS += -DDP_PLATFORM_XBOX=1 -DXBOX=1 -DCONFIG_MENU=1
 CFLAGS += -DLINK_TO_LIBJPEG=1
+CFLAGS += -D_fseeki64=fseek -D_ftelli64=ftell
 CFLAGS += -DSVNREVISION=\"xbox-nexuiz-252\" -DBUILDTYPE=release
 CFLAGS += -Wno-unused-parameter -Wno-sign-compare -Wno-deprecated-declarations
 
@@ -82,7 +83,7 @@ main.exe: $(PBGL_LIB)
 
 # Keep compiler flags for dependency sources local to this target.
 $(OGG_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC
-$(VORBIS_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC
+$(VORBIS_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC -Dalloca=__builtin_alloca
 
 .PHONY: print-pins
 print-pins:
