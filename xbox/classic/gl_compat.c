@@ -21,16 +21,30 @@ static void Xbox_glReadBuffer(GLenum mode) { (void)mode; }
 static void Xbox_glGetDoublev(GLenum pname, GLdouble *params)
 {
 	GLfloat f[16];
-	int i;
+	int i, count = 1;
 	memset(f, 0, sizeof(f));
 	glGetFloatv(pname, f);
-	for (i = 0; i < 16; ++i)
+	if (pname == GL_MODELVIEW_MATRIX || pname == GL_PROJECTION_MATRIX || pname == GL_TEXTURE_MATRIX)
+		count = 16;
+	else if (pname == GL_VIEWPORT)
+		count = 4;
+	for (i = 0; i < count; ++i)
 		params[i] = (GLdouble)f[i];
 }
 
 static void Xbox_glPixelStoref(GLenum pname, GLfloat value)
 {
 	glPixelStorei(pname, (GLint)value);
+}
+
+static void Xbox_glTexCoord1f(GLfloat s)
+{
+	glTexCoord4f(s, 0.f, 0.f, 1.f);
+}
+
+static void Xbox_glMultiTexCoord1f(GLenum unit, GLfloat s)
+{
+	glMultiTexCoord4f(unit, s, 0.f, 0.f, 1.f);
 }
 
 static void Xbox_glTexImage1D(GLenum target, GLint level, GLint internalformat,
@@ -92,7 +106,7 @@ void *GL_GetProcAddress(const char *name_string)
 	MAP_GL(glDepthMask); MAP_GL(glDepthRange); MAP_GL(glDrawElements); MAP_GL(glColorMask);
 	MAP_GL(glVertexPointer); MAP_GL(glNormalPointer); MAP_GL(glColorPointer);
 	MAP_GL(glTexCoordPointer); MAP_GL(glArrayElement); MAP_GL(glColor4f);
-	MAP_GL(glTexCoord1f); MAP_GL(glTexCoord2f); MAP_GL(glTexCoord3f); MAP_GL(glTexCoord4f);
+	MAP_GL(glTexCoord2f); MAP_GL(glTexCoord3f); MAP_GL(glTexCoord4f);
 	MAP_GL(glVertex2f); MAP_GL(glVertex3f); MAP_GL(glBegin); MAP_GL(glEnd);
 	MAP_GL(glLineWidth); MAP_GL(glPointSize); MAP_GL(glMatrixMode); MAP_GL(glOrtho);
 	MAP_GL(glFrustum); MAP_GL(glViewport); MAP_GL(glPushMatrix); MAP_GL(glPopMatrix);
@@ -111,6 +125,7 @@ void *GL_GetProcAddress(const char *name_string)
 	if (!strcmp(name_string, "glReadBuffer")) return (void *)Xbox_glReadBuffer;
 	if (!strcmp(name_string, "glGetDoublev")) return (void *)Xbox_glGetDoublev;
 	if (!strcmp(name_string, "glPixelStoref")) return (void *)Xbox_glPixelStoref;
+	if (!strcmp(name_string, "glTexCoord1f")) return (void *)Xbox_glTexCoord1f;
 	if (!strcmp(name_string, "glTexImage1D")) return (void *)Xbox_glTexImage1D;
 	if (!strcmp(name_string, "glTexSubImage1D")) return (void *)Xbox_glTexSubImage1D;
 	if (!strcmp(name_string, "glCopyTexImage1D")) return (void *)Xbox_glCopyTexImage1D;
@@ -122,7 +137,7 @@ void *GL_GetProcAddress(const char *name_string)
 	/* pbGL exposes OpenGL 1.3 core names; DarkPlaces asks for ARB aliases. */
 	if (!strcmp(name_string, "glActiveTextureARB")) return (void *)glActiveTexture;
 	if (!strcmp(name_string, "glClientActiveTextureARB")) return (void *)glClientActiveTexture;
-	if (!strcmp(name_string, "glMultiTexCoord1fARB")) return (void *)glMultiTexCoord1f;
+	if (!strcmp(name_string, "glMultiTexCoord1fARB")) return (void *)Xbox_glMultiTexCoord1f;
 	if (!strcmp(name_string, "glMultiTexCoord2fARB")) return (void *)glMultiTexCoord2f;
 	if (!strcmp(name_string, "glMultiTexCoord3fARB")) return (void *)glMultiTexCoord3f;
 	if (!strcmp(name_string, "glMultiTexCoord4fARB")) return (void *)glMultiTexCoord4f;
