@@ -1,0 +1,164 @@
+name: Playable Nexuiz Xbox
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - port/nexuiz-playable-lan
+    paths:
+      - 'xbox/classic/**'
+      - '.github/workflows/xbox-playable.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout port repository
+        uses: actions/checkout@v4
+
+      - name: Read pinned revisions
+        id: pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          source xbox/classic/versions.mk
+          echo "dp=$DP_CLASSIC_REV" >> "$GITHUB_OUTPUT"
+          echo "pbgl=$PBGL_REV" >> "$GITHUB_OUTPUT"
+          echo "ogg=$OGG_REV" >> "$GITHUB_OUTPUT"
+          echo "vorbis=$VORBIS_REV" >> "$GITHUB_OUTPUT"
+          echo "nexuiz_md5=$NEXUIZ_252_MD5" >> "$GITHUB_OUTPUT"
+          echo "nxdk=$(cat xbox/nxdk.version)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pinned nxdk
+        uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: ${{ steps.pins.outputs.nxdk }}
+          path: deps/nxdk
+          submodules: recursive
+
+      - name: Checkout Nexuiz-era DarkPlaces
+        uses: actions/checkout@v4
+        with:
+          repository: DarkPlacesEngine/DarkPlaces
+          ref: ${{ steps.pins.outputs.dp }}
+          path: deps/darkplaces-classic
+
+      - name: Checkout pbGL NV2A renderer
+        uses: actions/checkout@v4
+        with:
+          repository: fgsfdsfgs/pbgl
+          ref: ${{ steps.pins.outputs.pbgl }}
+          path: deps/pbgl
+
+      - name: Checkout libogg
+        uses: actions/checkout@v4
+        with:
+          repository: xiph/ogg
+          ref: ${{ steps.pins.outputs.ogg }}
+          path: deps/ogg
+
+      - name: Checkout libvorbis
+        uses: actions/checkout@v4
+        with:
+          repository: xiph/vorbis
+          ref: ${{ steps.pins.outputs.vorbis }}
+          path: deps/vorbis
+
+      - name: Install host build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang llvm lld cmake flex bison pkgconf unzip curl
+
+      - name: Download and verify Nexuiz Classic 2.5.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          url='https://sourceforge.net/projects/nexuiz/files/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip/download'
+          curl -L --fail --retry 5 --retry-delay 3 -A 'Mozilla/5.0' -o "$RUNNER_TEMP/nexuiz-252.zip" "$url"
+          echo '${{ steps.pins.outputs.nexuiz_md5 }}  '"$RUNNER_TEMP/nexuiz-252.zip" | md5sum -c -
+          mkdir -p deps/nexuiz
+          unzip -q "$RUNNER_TEMP/nexuiz-252.zip" -d deps/nexuiz
+
+      - name: Stage complete game data and Xbox defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATA_DIR="$(find deps/nexuiz -type d -name data -print | while read d; do if find "$d" -maxdepth 1 -type f -name '*.pk3' | grep -q .; then echo "$d"; break; fi; done)"
+          test -n "$DATA_DIR"
+          rm -rf xbox/classic/build/disc
+          mkdir -p xbox/classic/build/disc/data
+          cp -a "$DATA_DIR"/. xbox/classic/build/disc/data/
+          cat > xbox/classic/build/disc/data/autoexec.cfg <<'CFG'
+          // Original Xbox defaults. This loose file overrides packaged autoexec.cfg.
+          joy_enable 1
+          joy_deadzoneforward 0.20
+          joy_deadzoneside 0.20
+          joy_deadzonepitch 0.20
+          joy_deadzoneyaw 0.20
+          joy_sensitivityforward -1
+          joy_sensitivityside 1
+          joy_sensitivitypitch 1.4
+          joy_sensitivityyaw -1.4
+          bind JOY1 +jump
+          bind JOY2 +crouch
+          bind JOY3 dropweapon
+          bind JOY4 _weapprev
+          bind JOY5 weapprev
+          bind JOY6 weapnext
+          bind AUX1 +attack2
+          bind AUX2 +attack
+          bind AUX3 +hook
+          bind AUX4 +zoom
+          bind AUX5 weapprev
+          bind AUX6 weapnext
+          vid_vsync 0
+          cl_minfps 0
+          cl_minfps_force 0
+          cl_minfps_qualitymin 1
+          cl_minfps_qualitymax 1
+          // Zero-action attract mode. Any controller action can leave playback via menu/escape.
+          startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake
+          CFG
+          printf '%s\n' "$DATA_DIR" > xbox/classic/build/source-data-path.txt
+
+      - name: Build playable XBE and XISO
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C xbox/classic V=1 \
+            NXDK_DIR="$GITHUB_WORKSPACE/deps/nxdk" \
+            ENGINE_DIR="$GITHUB_WORKSPACE/deps/darkplaces-classic" \
+            PBGL_DIR="$GITHUB_WORKSPACE/deps/pbgl" \
+            OGG_DIR="$GITHUB_WORKSPACE/deps/ogg" \
+            VORBIS_DIR="$GITHUB_WORKSPACE/deps/vorbis"
+
+      - name: Record artifact identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p xbox/classic/artifacts
+          cp xbox/classic/build/disc/default.xbe xbox/classic/artifacts/nexuiz-xbox.xbe
+          cp xbox/classic/nexuiz-xbox.iso xbox/classic/artifacts/nexuiz-xbox.iso
+          sha256sum xbox/classic/artifacts/* | tee xbox/classic/artifacts/SHA256SUMS
+          {
+            echo "port_commit=$GITHUB_SHA"
+            echo "nxdk=${{ steps.pins.outputs.nxdk }}"
+            echo "darkplaces=${{ steps.pins.outputs.dp }}"
+            echo "pbgl=${{ steps.pins.outputs.pbgl }}"
+            echo "ogg=${{ steps.pins.outputs.ogg }}"
+            echo "vorbis=${{ steps.pins.outputs.vorbis }}"
+            echo "nexuiz_md5=${{ steps.pins.outputs.nexuiz_md5 }}"
+          } > xbox/classic/artifacts/BUILD-IDENTITY.txt
+
+      - name: Upload playable game image
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-xbox-playable
+          if-no-files-found: error
+          compression-level: 0
+          path: xbox/classic/artifacts/
