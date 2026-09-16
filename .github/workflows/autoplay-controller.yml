@@ -1,0 +1,50 @@
+name: Autoplay controller integration
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/autoplay-controller.yml'
+      - 'cl_attract*'
+      - 'cl_demo.c'
+      - 'cl_main.c'
+      - 'vid_sdl.c'
+      - 'vid_shared.c'
+      - 'host.c'
+      - 'keys.c'
+      - 'makefile.inc'
+      - 'xbox/**'
+      - 'tests/**'
+      - 'tools/xbox/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read pinned SDK revision
+        id: pin
+        run: echo "sha=$(cat xbox/nxdk.version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: ${{ steps.pin.outputs.sha }}
+          submodules: recursive
+          path: nxdk
+      - name: Archive exact source inputs
+        run: |
+          mkdir -p build/autoplay-evidence
+          git archive --format=tar.gz HEAD -o build/autoplay-evidence/darkplaces-source.tar.gz
+          tar -czf build/autoplay-evidence/nxdk-reference.tar.gz nxdk/lib/sdl/SDL2/include nxdk/lib/sdl/SDL2/src/joystick nxdk/lib/sdl/SDL2/src/gamecontroller* nxdk/samples nxdk/lib/usb nxdk/Makefile nxdk/lib/sdl/Makefile nxdk/lib/hal
+          git rev-parse HEAD > build/autoplay-evidence/source-revision.txt
+      - name: Host regression tests
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: autoplay-source-evidence
+          if-no-files-found: error
+          path: build/autoplay-evidence/
