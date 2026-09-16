@@ -75,6 +75,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang llvm lld cmake flex bison pkgconf unzip curl
 
+      - name: Compile and link production engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C xbox/classic V=1 main.exe \
+            NXDK_DIR="$GITHUB_WORKSPACE/deps/nxdk" \
+            ENGINE_DIR="$GITHUB_WORKSPACE/deps/darkplaces-classic" \
+            PBGL_DIR="$GITHUB_WORKSPACE/deps/pbgl" \
+            OGG_DIR="$GITHUB_WORKSPACE/deps/ogg" \
+            VORBIS_DIR="$GITHUB_WORKSPACE/deps/vorbis"
+
       - name: Download verified Nexuiz archive part 00
         uses: actions/download-artifact@v4
         with:
@@ -123,7 +134,6 @@ jobs:
           mkdir -p xbox/classic/build/disc/data
           cp -a "$DATA_DIR"/. xbox/classic/build/disc/data/
           cat > xbox/classic/build/disc/data/autoexec.cfg <<'CFG'
-          // Original Xbox defaults. This loose file overrides packaged autoexec.cfg.
           joy_enable 1
           joy_deadzoneforward 0.20
           joy_deadzoneside 0.20
@@ -150,21 +160,18 @@ jobs:
           cl_minfps_force 0
           cl_minfps_qualitymin 1
           cl_minfps_qualitymax 1
-          // Zero-action attract mode.
           startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake
           CFG
-          printf '%s\n' "$DATA_DIR" > xbox/classic/build/source-data-path.txt
 
-      - name: Build playable XBE and XISO
+      - name: Package XBE and XISO with complete game data
         shell: bash
         run: |
           set -euo pipefail
-          make -C xbox/classic V=1 \
-            NXDK_DIR="$GITHUB_WORKSPACE/deps/nxdk" \
-            ENGINE_DIR="$GITHUB_WORKSPACE/deps/darkplaces-classic" \
-            PBGL_DIR="$GITHUB_WORKSPACE/deps/pbgl" \
-            OGG_DIR="$GITHUB_WORKSPACE/deps/ogg" \
-            VORBIS_DIR="$GITHUB_WORKSPACE/deps/vorbis"
+          common=(NXDK_DIR="$GITHUB_WORKSPACE/deps/nxdk" ENGINE_DIR="$GITHUB_WORKSPACE/deps/darkplaces-classic" PBGL_DIR="$GITHUB_WORKSPACE/deps/pbgl" OGG_DIR="$GITHUB_WORKSPACE/deps/ogg" VORBIS_DIR="$GITHUB_WORKSPACE/deps/vorbis")
+          make -C xbox/classic V=1 xbox/classic/build/disc/default.xbe "${common[@]}" || \
+          make -C xbox/classic V=1 build/disc/default.xbe "${common[@]}"
+          make -C xbox/classic V=1 xbox/classic/nexuiz-xbox.iso "${common[@]}" || \
+          make -C xbox/classic V=1 nexuiz-xbox.iso "${common[@]}"
 
       - name: Record artifact identity
         shell: bash
