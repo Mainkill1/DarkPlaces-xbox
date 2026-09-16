@@ -1,0 +1,25 @@
+{
+  "foundation_sha": "bbdf722e6c7cdb25627e738ed903fa97fdceb9dc",
+  "new_host_tests": 23,
+  "result": "passed",
+  "python": "3.13.5",
+  "compiler": "cc (Debian 14.2.0-19) 14.2.0",
+  "workspace": "partial local source snapshot; unmodified qtypes.h, thread.h and original thread_null.c matched Git blob hashes before editing",
+  "tdd": {
+    "missing_content_tool": "10 failing tests before implementation",
+    "external_notices_and_corrupt_deflate": "3 failing tests before correction",
+    "old_atomic_increment": "both actual-source C runtime tests abort on the reference-count assertion; corrected decrement passes"
+  },
+  "full_repository_tests_run_locally": false,
+  "full_desktop_build_run_locally": false,
+  "nxdk_build_run_locally": false,
+  "xbox_boot_tested": false,
+  "real_nexuiz_content_tested": false,
+  "engine_linked": false,
+  "files_sha256": {
+    "thread_null.c": "c79a4acbe59f4ce520f234fc40799ab0c6295dc55bc2c96b368b325081b75c6e",
+    "tools/xbox/nexuiz_prepare.py": "88fbb59fcdcf4eae4bc289f19a1859832691ccd565271f413e9da0d76b3f839b",
+    "tests/test_xbox_nexuiz_content.py": "272bb57b2e2b1f882fb7bbd9da2fd54f22920e1aa55033bdb5cc024b837a74f4",
+    "tests/test_xbox_thread_null.py": "637e74eb64038fefb575613cde001f53101e43090a5cd9722ea31dbb7d6536e1"
+  }
+}

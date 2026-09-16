@@ -1,4 +1,3 @@
-#include "quakedef.h"
 #include "thread.h"
 
 int Thread_Init(void)
@@ -107,7 +106,7 @@ void _Thread_AtomicIncRef(Thread_Atomic *a, const char *filename, int fileline)
 
 qbool _Thread_AtomicDecRef(Thread_Atomic *a, const char *filename, int fileline)
 {
-	return a->value++ == 1;
+	return a->value-- == 1;
 }
 
 qbool _Thread_AtomicTryLock(Thread_SpinLock *lock, const char *filename, int fileline)
