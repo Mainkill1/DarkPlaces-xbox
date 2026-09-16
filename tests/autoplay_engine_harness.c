@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "autoplay_engine_stubs.h"
 #include "cl_attract.h"
+#include "cl_graphics_menu.h"
 
 struct test_cls cls;
 struct test_host host;
@@ -9,6 +10,15 @@ vid_joystate_t vid_joystate;
 cvar_t joy_enable, cl_startdemos;
 static cmd_state_t command;
 cmd_state_t *cmd_local = &command;
+static qbool menu_editing;
+static unsigned menu_context;
+void CL_GraphicsMenu_Init(void) { menu_editing=false; menu_context=0; }
+void CL_GraphicsMenu_BootConfig(void) { }
+void CL_GraphicsMenu_Open(void) { key_dest=key_menu; ++menu_context; menu_editing=false; }
+void CL_GraphicsMenu_Close(void) { ++menu_context; menu_editing=false; }
+qbool CL_GraphicsMenu_Editing(void) { return menu_editing; }
+unsigned CL_GraphicsMenu_Context(void) { return menu_context; }
+void CL_GraphicsMenu_LogSettings(void) { }
 static void menu(int open) { key_dest = open ? key_menu : key_game; }
 void (*MR_ToggleMenu)(int) = menu;
 static int enabled = 1, file_missing, load_failure, plays, disconnects, errors;
@@ -71,6 +81,12 @@ int main(void)
     pad.buttons=0; sample(&pad,&out);
     pad.buttons=1u<<DP_PAD_A; sample(&pad,&out); assert(out.button[DP_PAD_A]);
     pad.buttons=0; sample(&pad,&out);
+    menu_editing=true; ++menu_context; /* actual menu's page-change contract */
+    sample(&pad,&out);
+    pad.buttons=1u<<DP_PAD_START; sample(&pad,&out);
+    assert(out.button[DP_PAD_START] && !cls.demoplayback); /* Start goes Back, not play */
+    pad.buttons=0; sample(&pad,&out);
+    menu_editing=false; ++menu_context; sample(&pad,&out);
     pad.buttons=1u<<DP_PAD_START; sample(&pad,&out); assert(!out.button[DP_PAD_START]);
     CL_Attract_Frame(); assert(plays==4 && !strcmp(last_demo,"demos/a.dem"));
     /* Error is latched, never retried in a tight loop. */

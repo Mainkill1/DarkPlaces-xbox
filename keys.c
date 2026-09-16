@@ -22,6 +22,7 @@
 
 #include "quakedef.h"
 #include "cl_attract.h"
+#include "cl_graphics_menu.h"
 #include "cl_video.h"
 #include "utf8lib.h"
 #include "csprogs.h"
@@ -1885,6 +1886,11 @@ Key_Event (int key, int ascii, qbool down)
 		keydest = tbl_keydest[key];
 		ascii = tbl_keyascii[key];
 	}
+
+	// Bookkeeping must precede menu consumption so Key_ReleaseAll clears held keys
+	// on a controller page change (otherwise a swallowed release can stick A/B).
+	if (CL_GraphicsMenu_KeyEvent(key, down))
+		return;
 
 	if(keydest == key_void)
 		return;

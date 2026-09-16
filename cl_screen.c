@@ -1,5 +1,6 @@
 
 #include "quakedef.h"
+#include "cl_graphics_menu.h"
 #include "cl_video.h"
 #include "image.h"
 #include "jpeg.h"
@@ -1738,7 +1739,7 @@ static void SCR_DrawScreen (void)
 	}
 	SCR_DrawNetGraph ();
 #ifdef CONFIG_MENU
-	if(!scr_loading)
+	if(!scr_loading && !CL_GraphicsMenu_Draw())
 		MR_Draw();
 #endif
 	CL_DrawVideo();

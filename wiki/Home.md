@@ -32,6 +32,8 @@ The live implementation queue is the [master port epic](https://github.com/Maink
 - [Contribution workflow](Contribution-Workflow)
 - [Licensing and content](Licensing-and-Content)
 
+- [Controller graphics settings](Controller-Graphics-Settings)
+
 ## Publishing
 
 The repository stores the canonical pages under `wiki/`. GitHub does not expose the separate `DarkPlaces-xbox.wiki` Git repository until a Home page has been created once from the repository Wiki tab. After that one-time initialization, run the **Publish repository wiki** workflow to synchronize this directory.

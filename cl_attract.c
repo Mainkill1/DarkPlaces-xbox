@@ -4,6 +4,7 @@
  */
 #include "quakedef.h"
 #include "cl_attract.h"
+#include "cl_graphics_menu.h"
 #include "xbox/attract_policy.h"
 
 static dp_attract_t attract;
@@ -14,6 +15,7 @@ static double signon_deadline;
 static qbool escape_consumed;
 static qbool error_menu_pending;
 static int previous_destination = -1;
+static unsigned previous_menu_context;
 static cvar_t xbox_demo_loadtimeout = {CF_CLIENT, "xbox_demo_loadtimeout", "60", "seconds allowed for demo signon; failures stop the loop rather than retry indefinitely"};
 
 qbool CL_Attract_Enabled(void)
@@ -27,6 +29,7 @@ qbool CL_Attract_Enabled(void)
 }
 static void CL_Attract_Menu(void)
 {
+    if (CL_Attract_Enabled()) { CL_GraphicsMenu_Open(); return; }
 #ifdef CONFIG_MENU
     if (MR_ToggleMenu) MR_ToggleMenu(1);
     else
@@ -92,6 +95,7 @@ static void CL_Attract_Start_f(cmd_state_t *cmd)
             CL_Attract_Error("missing or malformed demo header"); CL_Disconnect(); CL_Attract_Menu(); return;
         }
     }
+    CL_GraphicsMenu_Close();
     error_menu_pending = false;
     DP_Attract_Start(&attract, playlist_count);
     cls.demonum = -1;
@@ -119,6 +123,8 @@ static void CL_Attract_Status_f(cmd_state_t *cmd)
 void CL_Attract_Init(void)
 {
     DP_Attract_Init(&attract);
+    CL_GraphicsMenu_Init();
+    previous_menu_context = 0;
     DP_ButtonGate_Reset(&button_gate);
     playlist_count = 0;
     previous_destination = -1;
@@ -142,7 +148,9 @@ void CL_Attract_Boot(void)
     }
     /* Runs on the first normal Host_Frame, after FS, commands, video and menu
      * startup. Corrupt content then reaches Host_Error's recoverable path. */
-    Cbuf_AddText(cmd_local, "exec xbox-benchmark.cfg\nxbox_demo_start\n");
+    Cbuf_AddText(cmd_local, "exec xbox-benchmark.cfg\n");
+    CL_GraphicsMenu_BootConfig();
+    Cbuf_AddText(cmd_local, "xbox_demo_start\n");
 }
 void CL_Attract_Frame(void)
 {
@@ -154,6 +162,7 @@ void CL_Attract_Frame(void)
     }
     if (DP_Attract_TakeNext(&attract, &index)) {
         cls.demonum = -1;
+        CL_GraphicsMenu_LogSettings();
         CL_PlayDemo(playlist[index]);
         DP_Attract_Loaded(&attract, cls.demoplayback);
         if (!cls.demoplayback) { CL_Attract_Error("demo could not start"); CL_Attract_Menu(); return; }
@@ -201,7 +210,8 @@ void CL_Attract_Controller(const dp_pad_sample_t *s, vid_joystate_t *out)
     int destination = key_consoleactive ? key_console : key_dest;
     memset(out, 0, sizeof(*out));
     out->is360 = true; /* stable logical mapping even for a disconnected device */
-    if (previous_destination != destination) {
+    if (previous_destination != destination || previous_menu_context != CL_GraphicsMenu_Context()) {
+        previous_menu_context = CL_GraphicsMenu_Context();
         previous_destination = destination;
         DP_ButtonGate_Reset(&button_gate);
         Key_ReleaseAll();
@@ -213,7 +223,12 @@ void CL_Attract_Controller(const dp_pad_sample_t *s, vid_joystate_t *out)
         if (pressed) CL_Attract_Stop();
         return; /* sticks and all normal actions are isolated from recorded playback */
     }
-    if (pressed & (1u << DP_PAD_START)) {
+    if (destination == key_menu && (pressed & (1u << DP_PAD_Y))) {
+        CL_GraphicsMenu_Open();
+        DP_ButtonGate_Reset(&button_gate);
+        return;
+    }
+    if ((pressed & (1u << DP_PAD_START)) && !CL_GraphicsMenu_Editing()) {
         if (destination == key_menu && (attract.state == DP_ATTRACT_MANUAL || attract.state == DP_ATTRACT_FAILED)) {
             CL_Attract_Start_f(cmd_local);
             return;
