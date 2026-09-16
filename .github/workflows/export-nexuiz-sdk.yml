@@ -1,0 +1,44 @@
+name: Export Nexuiz SDK inputs
+on:
+  push:
+    branches: ['work/nexuiz-sdk-export']
+permissions:
+  contents: read
+jobs:
+  inputs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read pin
+        id: pin
+        run: echo "sha=$(cat xbox/nxdk.version)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: ${{ steps.pin.outputs.sha }}
+          path: nxdk
+          submodules: recursive
+          persist-credentials: false
+      - name: Install development tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang llvm lld cmake flex bison libsdl2-dev pkgconf
+      - name: Build existing native dependencies
+        run: make -C xbox/inputcheck NXDK_DIR="$GITHUB_WORKSPACE/nxdk" -j2
+      - name: Export reproducible source and SDK inputs
+        run: |
+          mkdir -p export
+          git archive --format=tar.gz f1f3f7dbe0c3ac67f143f6f43555ca78094e51c6 > export/engine-source.tar.gz
+          tar -czf export/nxdk-dev.tar.gz --exclude='*.obj' --exclude='*.d' --exclude='*.o' nxdk
+          tar -czf export/sdl-host-headers.tar.gz -C /usr include/SDL2 include/x86_64-linux-gnu/SDL2
+          (cd export && sha256sum *.tar.gz > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-sdk-development-inputs
+          path: export/
+          if-no-files-found: error
+          retention-days: 7
