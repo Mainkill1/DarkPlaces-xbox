@@ -1,0 +1,54 @@
+name: Inspect original Nexuiz bootstrap content
+on:
+  push:
+    branches: ['work/nexuiz-sdk-export']
+    paths: ['.github/workflows/export-nexuiz-bootstrap-content.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Download original release, never execute its binaries
+        run: |
+          curl --fail --location --retry 2 --connect-timeout 30 --max-time 900 \
+            'https://downloads.sourceforge.net/project/nexuiz/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip' \
+            --output nexuiz-252.zip
+      - name: Inspect and export configuration and notices only
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, tempfile, zipfile
+          source = pathlib.Path('nexuiz-252.zip')
+          out = pathlib.Path('inspection'); out.mkdir()
+          digest = hashlib.file_digest(source.open('rb'), 'sha256').hexdigest()
+          report = {'origin': 'https://sourceforge.net/projects/nexuiz/files/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip', 'archive_sha256': digest, 'archive_bytes': source.stat().st_size, 'outer_files': [], 'packs': []}
+          with zipfile.ZipFile(source) as outer, zipfile.ZipFile(out/'bootstrap-source-files.zip','w',zipfile.ZIP_DEFLATED) as selected:
+            for entry in outer.infolist():
+              report['outer_files'].append({'path':entry.filename,'bytes':entry.file_size})
+              lower=entry.filename.lower()
+              if not entry.is_dir() and entry.file_size < 1048576 and any(s in pathlib.PurePosixPath(lower).name for s in ['copying','license','gpl','readme','credits','authors']):
+                selected.writestr('outer/'+entry.filename, outer.read(entry))
+              if lower.endswith('.pk3') and '/data/' in lower:
+                with tempfile.TemporaryFile() as file:
+                  with outer.open(entry) as src:
+                    while chunk:=src.read(1048576): file.write(chunk)
+                  file.seek(0); packhash=hashlib.file_digest(file,'sha256').hexdigest(); file.seek(0)
+                  packreport={'file':entry.filename,'sha256':packhash,'members':[]}
+                  with zipfile.ZipFile(file) as pack:
+                    for item in pack.infolist():
+                      name=item.filename
+                      record={'path':name,'bytes':item.file_size}
+                      if not item.is_dir() and item.file_size < 1048576 and (name.lower().endswith(('.cfg','.rc')) or any(s in pathlib.PurePosixPath(name.lower()).name for s in ['copying','license','gpl','readme','credits','authors'])):
+                        data=pack.read(item); record['sha256']=hashlib.sha256(data).hexdigest(); record['exported']=True
+                        selected.writestr(pathlib.PurePosixPath(entry.filename).name+'/'+name, data)
+                      packreport['members'].append(record)
+                  report['packs'].append(packreport)
+          (out/'provenance.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: original-nexuiz-bootstrap-inspection
+          path: inspection/
+          if-no-files-found: error
+          retention-days: 7
