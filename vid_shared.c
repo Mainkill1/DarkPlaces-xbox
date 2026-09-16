@@ -1,5 +1,6 @@
 
 #include "quakedef.h"
+#include "cl_attract.h"
 #include "cdaudio.h"
 #include "image.h"
 
@@ -1013,7 +1014,7 @@ double vid_joybuttontimer[MAXJOYBUTTON];
 void VID_ApplyJoyState(vid_joystate_t *joystate)
 {
 	int j;
-	int c = joy_axiskeyevents.integer != 0;
+	int c = CL_Attract_Enabled() ? (key_consoleactive || key_dest != key_game) : joy_axiskeyevents.integer != 0;
 	if (joystate->is360)
 	{
 #if 0

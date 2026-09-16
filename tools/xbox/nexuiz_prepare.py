@@ -20,6 +20,7 @@ import tempfile
 from typing import BinaryIO
 import zipfile
 import zlib
+from autoplay_config import build_config
 
 RELEASE = "nexuiz-classic-2.5.2"
 VERSION = 1
@@ -249,9 +250,23 @@ def load_selection(path: Path) -> dict:
     return plan
 
 
-def stage(root: Path, selection: Path, output: Path, notice_dir: Path | None = None) -> dict:
+def stage(root: Path, selection: Path, output: Path, notice_dir: Path | None = None,
+          demos: list[str] | None = None, require_autoplay: bool = False) -> dict:
     root = data_root(root)
     plan = load_selection(selection)
+    try:
+        demo_names, config = build_config([a["path"] for a in plan["assets"]], demos, require_autoplay)
+    except ValueError as exc:
+        raise ContentError(str(exc)) from exc
+    generated = []
+    if config is not None:
+        if any(a["path"].casefold() == "xbox-benchmark.cfg" for a in plan["assets"] + plan["notices"]):
+            raise ContentError("selected content collides with generated xbox-benchmark.cfg")
+        if len(config) > plan["max_asset_bytes"]:
+            raise ContentError("autoplay configuration exceeds asset budget")
+        generated = [{"path": "xbox-benchmark.cfg", "payload": config}]
+    if len(plan["assets"]) + len(plan["notices"]) + len(generated) > MAX_ENTRIES:
+        raise ContentError("generated content exceeds classic PK3 entry limit")
     if output.exists() or output.is_symlink():
         raise ContentError(f"output already exists; choose a new directory: {output}")
     if output.resolve().is_relative_to(root):
@@ -265,7 +280,7 @@ def stage(root: Path, selection: Path, output: Path, notice_dir: Path | None = N
                 raise ContentError(f"source hash mismatch: {source['file']}")
             pack = stack.enter_context(zipfile.ZipFile(stream))
             opened[source["file"]] = (stream, pack, archive_index(pack))
-        total = 0
+        total = sum(len(a["payload"]) for a in generated)
         for asset in plan["assets"]:
             entry = opened[asset["source"]][2].get(asset["path"])
             if entry is None:
@@ -298,14 +313,16 @@ def stage(root: Path, selection: Path, output: Path, notice_dir: Path | None = N
             package = staging / "data/xboxprep.pk3"
             assets = []
             notice_records = []
-            files = sorted(plan["assets"] + plan["notices"], key=lambda a: a["path"])
+            files = sorted(plan["assets"] + plan["notices"] + generated, key=lambda a: a["path"])
             with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_STORED, allowZip64=False) as dest:
                 for item in files:
                     info = zipfile.ZipInfo(item["path"], date_time=(1980, 1, 1, 0, 0, 0))
                     info.create_system = 3
                     info.external_attr = 0o100644 << 16
                     with dest.open(info, "w") as target:
-                        if "source" in item:
+                        if "payload" in item:
+                            target.write(item["payload"])
+                        elif "source" in item:
                             _, pack, entries = opened[item["source"]]
                             entry = entries[item["path"]]
                             actual = transfer(pack, entry, plan["max_asset_bytes"], target)
@@ -337,6 +354,12 @@ def stage(root: Path, selection: Path, output: Path, notice_dir: Path | None = N
                         "tool_sha256": file_hash(Path(__file__)),
                         "selection_sha256": hashlib.sha256(encoded(plan)).hexdigest(),
                         "sources": plan["sources"], "assets": assets, "notices": notice_records, "selected_bytes": total,
+                        "generated_files": [{"path": a["path"], "bytes": len(a["payload"]),
+                                             "sha256": hashlib.sha256(a["payload"]).hexdigest(),
+                                             "generator": "autoplay_config.py"} for a in generated],
+                        "autoplay": {"configured": config is not None, "demos": demo_names,
+                                     "generator_sha256": file_hash(Path(__file__).with_name("autoplay_config.py")),
+                                     "xbox_boot_tested": False},
                         "package": "data/xboxprep.pk3", "package_bytes": package.stat().st_size,
                         "package_sha256": file_hash(package),
                         "validation": {"dependency_closure": "not-checked",
@@ -363,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
     build.add_argument("--selection", type=Path, required=True)
     build.add_argument("--output", type=Path, required=True)
     build.add_argument("--notice-dir", type=Path, help="external notice root; defaults to selection directory")
+    build.add_argument("--demo", action="append", help="selected .dem path; repeat to specify playlist order")
+    build.add_argument("--require-autoplay", action="store_true", help="reject a package with no selected demos")
     args = parser.parse_args(argv)
     try:
         if args.command == "inventory":
@@ -370,7 +395,7 @@ def main(argv: list[str] | None = None) -> int:
             with args.output.open("xb") as output:
                 output.write(encoded(report))
         else:
-            stage(args.data_dir, args.selection, args.output, args.notice_dir)
+            stage(args.data_dir, args.selection, args.output, args.notice_dir, args.demo, args.require_autoplay)
     except (ContentError, json.JSONDecodeError, OSError, UnicodeError, zipfile.BadZipFile, zipfile.LargeZipFile,
             EOFError, RuntimeError, NotImplementedError, zlib.error) as exc:
         print(f"Nexuiz preparation failed: {exc}", file=sys.stderr)

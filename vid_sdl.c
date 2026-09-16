@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <stdio.h>
 
 #include "quakedef.h"
+#include "cl_attract.h"
 #include "image.h"
 #include "utf8lib.h"
 
@@ -682,6 +683,18 @@ static void VID_TouchscreenCursor(float px, float py, float pwidth, float pheigh
 
 void VID_BuildJoyState(vid_joystate_t *joystate)
 {
+	if (CL_Attract_Enabled())
+	{
+		dp_pad_sample_t sample;
+		DP_ControllerSDL_Poll(&sample);
+		if (joy_active.integer != sample.connected)
+		{
+			Cvar_SetValueQuick(&joy_active, sample.connected);
+			Con_Printf("XBOX_CONTROLLER %s: %s\n", sample.connected ? "connected" : "disconnected", DP_ControllerSDL_Name());
+		}
+		CL_Attract_Controller(&sample, joystate);
+		return;
+	}
 	VID_Shared_BuildJoyState_Begin(joystate);
 
 	if (vid_sdljoystick)
@@ -691,11 +704,11 @@ void VID_BuildJoyState(vid_joystate_t *joystate)
 
 		if (vid_sdlgamecontroller)
 		{
-			for (j = 0; j <= SDL_CONTROLLER_AXIS_MAX; ++j)
+			for (j = 0; j < SDL_CONTROLLER_AXIS_MAX && j < MAXJOYAXIS; ++j)
 			{
 				joystate->axis[j] = SDL_GameControllerGetAxis(vid_sdlgamecontroller, (SDL_GameControllerAxis)j) * (1.0f / 32767.0f);
 			}
-			for (j = 0; j < SDL_CONTROLLER_BUTTON_MAX; ++j)
+			for (j = 0; j < SDL_CONTROLLER_BUTTON_MAX && j < MAXJOYBUTTON - 2; ++j)
 				joystate->button[j] = SDL_GameControllerGetButton(vid_sdlgamecontroller, (SDL_GameControllerButton)j);
 			// emulate joy buttons for trigger "axes"
 			joystate->button[SDL_CONTROLLER_BUTTON_MAX] = VID_JoyState_GetAxis(joystate, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 1, joy_sdl2_trigger_deadzone.value) > 0.0f;
@@ -707,10 +720,10 @@ void VID_BuildJoyState(vid_joystate_t *joystate)
 			int numaxes;
 			int numbuttons;
 			numaxes = SDL_JoystickNumAxes(joy);
-			for (j = 0;j < numaxes;j++)
+			for (j = 0;j < numaxes && j < MAXJOYAXIS;j++)
 				joystate->axis[j] = SDL_JoystickGetAxis(joy, j) * (1.0f / 32767.0f);
 			numbuttons = SDL_JoystickNumButtons(joy);
-			for (j = 0;j < numbuttons;j++)
+			for (j = 0;j < numbuttons && j < MAXJOYBUTTON;j++)
 				joystate->button[j] = SDL_JoystickGetButton(joy, j);
 		}
 	}
@@ -1587,6 +1600,24 @@ void VID_EnableJoystick(qbool enable)
 	qbool success = false;
 	int sharedcount = 0;
 	int sdlindex = -1;
+	if (CL_Attract_Enabled())
+	{
+		static qbool reported_failure;
+		if (enable)
+		{
+			if (DP_ControllerSDL_Init() < 0 && !reported_failure)
+			{
+				Con_Printf(CON_ERROR "XBOX_CONTROLLER initialization failed: %s\n", SDL_GetError());
+				reported_failure = true;
+			}
+		}
+		else
+		{
+			DP_ControllerSDL_Shutdown();
+			reported_failure = false;
+		}
+		return;
+	}
 	sharedcount = VID_Shared_SetJoystick(index);
 	if (index >= 0 && index < sharedcount)
 		success = true;

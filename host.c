@@ -21,6 +21,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // host.c -- coordinates spawning and killing of local servers
 
 #include "quakedef.h"
+#include "cl_attract.h"
 
 #include <time.h>
 #include "libcurl.h"
@@ -130,6 +131,7 @@ void Host_Error (const char *error, ...)
 	// prevent an endless loop if the error was triggered by a command
 	Cbuf_Clear(cmd_local->cbuf);
 
+	CL_Attract_Error(hosterrorstring1);
 	CL_DisconnectEx(false, "Host_Error: %s", hosterrorstring1);
 	cls.demonum = -1; // stop demo loop
 
@@ -557,6 +559,7 @@ void Host_Init (void)
 
 	Con_DPrint("========Initialized=========\n");
 	host.state = host_active;
+	CL_Attract_Boot();
 
 	if (cls.state != ca_dedicated)
 		SV_StartThread();
@@ -640,6 +643,7 @@ double Host_Frame(double time)
 
 	// process console commands
 	Cbuf_Frame(host.cbuf);
+	CL_Attract_Frame();
 
 	R_TimeReport("---");
 

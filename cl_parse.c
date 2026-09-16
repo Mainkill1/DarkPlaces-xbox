@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // cl_parse.c  -- parse a message received from the server
 
 #include "quakedef.h"
+#include "cl_attract.h"
 #include "cdaudio.h"
 #include "cl_collision.h"
 #include "csprogs.h"
@@ -3542,7 +3543,9 @@ void CL_ParseServerMessage(void)
 				break;
 
 			case qw_svc_disconnect:
-				if (cls.demonum != -1)
+				if (CL_Attract_DemoEnded())
+					CL_Disconnect();
+				else if (cls.demonum != -1)
 					CL_NextDemo();
 				else
 					CL_DisconnectEx(true, "Server disconnected");
@@ -3919,7 +3922,9 @@ void CL_ParseServerMessage(void)
 				break;
 
 			case svc_disconnect:
-				if (cls.demonum != -1)
+				if (CL_Attract_DemoEnded())
+					CL_Disconnect();
+				else if (cls.demonum != -1)
 					CL_NextDemo();
 				else
 					CL_DisconnectEx(true, cls.protocol == PROTOCOL_DARKPLACES8 ? MSG_ReadString(&cl_message, cl_readstring, sizeof(cl_readstring)) : "Server disconnected");

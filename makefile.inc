@@ -24,6 +24,8 @@ OBJ_COMMON= \
 	cl_cmd.o \
 	cl_collision.o \
 	cl_demo.o \
+	cl_attract.o \
+	xbox/attract_policy.o \
 	cl_ents.o \
 	cl_ents4.o \
 	cl_ents5.o \
@@ -127,8 +129,8 @@ OBJ_MENU= \
 # being linked, because it should be recompiled every time an executable is
 # built to give the executable a proper date string
 OBJ_SV= builddate.c sys_null.o vid_null.o thread_null.o $(OBJ_SND_NULL) $(OBJ_COMMON)
-OBJ_SDL= builddate.c sys_sdl.o vid_sdl.o thread_sdl.o $(OBJ_MENU) $(OBJ_SND_COMMON) $(OBJ_SND_XMP) snd_sdl.o $(OBJ_VIDEO_CAPTURE) $(OBJ_COMMON)
-OBJ_WASM= builddate.c sys_wasm.o vid_sdl.o thread_sdl.o $(OBJ_MENU) $(OBJ_SND_COMMON) $(OBJ_SND_XMP) snd_sdl.o $(OBJ_VIDEO_CAPTURE) $(OBJ_COMMON)
+OBJ_SDL= builddate.c sys_sdl.o vid_sdl.o xbox/controller_sdl.o thread_sdl.o $(OBJ_MENU) $(OBJ_SND_COMMON) $(OBJ_SND_XMP) snd_sdl.o $(OBJ_VIDEO_CAPTURE) $(OBJ_COMMON)
+OBJ_WASM= builddate.c sys_wasm.o vid_sdl.o xbox/controller_sdl.o thread_sdl.o $(OBJ_MENU) $(OBJ_SND_COMMON) $(OBJ_SND_XMP) snd_sdl.o $(OBJ_VIDEO_CAPTURE) $(OBJ_COMMON)
 
 # Compilation
 # -D_POSIX_C_SOURCE=200809L doesn't enable all of POSIX 2008, wtf?
@@ -485,6 +487,7 @@ wasm-release :
 
 prepare :
 	$(CMD_MKDIR) $(BUILD_DIR)
+	$(CMD_MKDIR) $(BUILD_DIR)/xbox
 	$(CMD_CP) makefile.inc $(BUILD_DIR)/
 	$(CMD_CP) $(MAKEFILE) $(BUILD_DIR)/
 
