@@ -78,8 +78,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          url='https://sourceforge.net/projects/nexuiz/files/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip/download'
-          curl -L --fail --retry 5 --retry-delay 3 -A 'Mozilla/5.0' -o "$RUNNER_TEMP/nexuiz-252.zip" "$url"
+          url='https://downloads.sourceforge.net/project/nexuiz/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip'
+          curl --fail --location --retry 5 --retry-delay 3 --connect-timeout 30 --max-time 900 \
+            -A 'Mozilla/5.0' -o "$RUNNER_TEMP/nexuiz-252.zip" "$url"
           echo '${{ steps.pins.outputs.nexuiz_md5 }}  '"$RUNNER_TEMP/nexuiz-252.zip" | md5sum -c -
           mkdir -p deps/nexuiz
           unzip -q "$RUNNER_TEMP/nexuiz-252.zip" -d deps/nexuiz
