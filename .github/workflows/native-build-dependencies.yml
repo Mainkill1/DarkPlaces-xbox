@@ -1,0 +1,77 @@
+name: Native build dependencies and content
+on:
+  push:
+    branches: [build/nexuiz-native-dependencies]
+    paths: ['.github/workflows/native-build-dependencies.yml']
+permissions:
+  contents: read
+jobs:
+  sdk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: XboxDev/nxdk
+          ref: 29638d0b001f179b73c3513489af10ddc2986216
+          submodules: recursive
+          path: nxdk
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: fgsfdsfgs/pbgl
+          ref: 017ab17c4530bf3e2ad446a50de9b18ea6011548
+          path: pbgl
+          persist-credentials: false
+      - name: Install compiler prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake clang llvm lld flex bison pkgconf
+      - name: Build SDK libraries and packaging tools
+        run: |
+          export NXDK_DIR="$GITHUB_WORKSPACE/nxdk"
+          export PATH="$NXDK_DIR/bin:$PATH"
+          make -C nxdk NXDK_ONLY=1 NXDK_SDL=y -j4
+          make -C nxdk tools
+          cmake -S pbgl -B pbgl/build -DCMAKE_TOOLCHAIN_FILE="$NXDK_DIR/share/toolchain-nxdk.cmake"
+          cmake --build pbgl/build -j4
+          git -C nxdk rev-parse HEAD > nxdk/BUILD-REVISION.txt
+          git -C pbgl rev-parse HEAD > pbgl/BUILD-REVISION.txt
+          tar czf native-sdk.tar.gz --exclude='*/.git' nxdk pbgl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-sdk
+          path: native-sdk.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+  content:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Retrieve the original Classic release
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --connect-timeout 30 --max-time 900 \
+            'https://downloads.sourceforge.net/project/nexuiz/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip' -o nexuiz-252.zip
+          python3 - <<'PY'
+          import hashlib, pathlib, zipfile, json
+          p = pathlib.Path('nexuiz-252.zip')
+          h = hashlib.sha256()
+          with p.open('rb') as f:
+              while chunk := f.read(1024*1024): h.update(chunk)
+          with zipfile.ZipFile(p) as z:
+              paths = z.namelist()
+              if not any(n.endswith('.pk3') for n in paths): raise SystemExit('No content packs in release')
+              pathlib.Path('release-files.txt').write_text('\n'.join(paths))
+          pathlib.Path('release-identity.json').write_text(json.dumps({'sha256': h.hexdigest(), 'bytes': p.stat().st_size, 'source': 'SourceForge Nexuiz Classic 2.5.2 original release'}, indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-classic-release-input
+          compression-level: 0
+          if-no-files-found: error
+          path: |
+            nexuiz-252.zip
+            release-files.txt
+            release-identity.json
