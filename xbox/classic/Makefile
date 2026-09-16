@@ -33,7 +33,7 @@ ENGINE_COMMON := \
 	cl_parse.c cl_particles.c cl_screen.c cl_video.c clvm_cmds.c cmd.c \
 	collision.c common.c console.c csprogs.c curves.c cvar.c dpvsimpledecode.c \
 	filematch.c fractalnoise.c fs.c gl_backend.c gl_draw.c gl_rmain.c \
-	gl_rsurf.c gl_textures.c hmac.c host.c host_cmd.c image.c jpeg.c keys.c \
+	gl_rsurf.c gl_textures.c hmac.c host.c host_cmd.c image.c image_png.c jpeg.c keys.c \
 	lhnet.c libcurl.c mathlib.c matrixlib.c mdfour.c menu.c meshqueue.c \
 	model_alias.c model_brush.c model_shared.c model_sprite.c mvm_cmds.c \
 	netconn.c palette.c polygon.c portals.c protocol.c prvm_cmds.c prvm_edict.c \
