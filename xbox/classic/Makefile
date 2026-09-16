@@ -27,8 +27,11 @@ GEN_XISO ?= $(CURDIR)/nexuiz-xbox.iso
 CLASSIC_PORT_DIR := $(CURDIR)
 CLASSIC_INCLUDE_DIR := $(CLASSIC_PORT_DIR)/include
 
+# Mirrors the Nexuiz-era OBJ_COMMON list. sys_shared.c is deliberately replaced
+# by sys_xbox.c because its desktop dlopen/process implementation is not valid
+# on the console.
 ENGINE_COMMON := \
-	bih.c crypto.c cap_avi.c cap_ogg.c cd_shared.c \
+	cap_avi.c cap_ogg.c cd_shared.c \
 	cl_collision.c cl_demo.c cl_dyntexture.c cl_gecko.c cl_input.c cl_main.c \
 	cl_parse.c cl_particles.c cl_screen.c cl_video.c clvm_cmds.c cmd.c \
 	collision.c common.c console.c csprogs.c curves.c cvar.c dpvsimpledecode.c \
