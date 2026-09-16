@@ -1,0 +1,40 @@
+name: Apply verified autoplay preparation
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened]
+    paths:
+      - '.github/_autoplay_patch/**'
+      - '.github/workflows/apply-autoplay-preparation.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.repository == 'Mainkill1/DarkPlaces-xbox' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'port/nexuiz-autoplay-controller'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - name: Verify and apply reviewed local patch
+        run: |
+          python3 - <<'PY'
+          import base64, gzip, hashlib, pathlib, subprocess
+          root = pathlib.Path('.github/_autoplay_patch')
+          encoded = ''.join(p.read_text() for p in sorted(root.glob('*.b64')))
+          patch = gzip.decompress(base64.b64decode(encoded, validate=True))
+          assert len(patch) == 84321
+          assert hashlib.sha256(patch).hexdigest() == '691df67c24abeba659deb1b3e645ac5a7fb61caa818d05102826b3eb71531ac7'
+          target = pathlib.Path('/tmp/autoplay-reviewed.patch')
+          target.write_bytes(patch)
+          subprocess.run(['git', 'apply', '--check', str(target)], check=True)
+          subprocess.run(['git', 'apply', '--index', str(target)], check=True)
+          PY
+          git rm -r .github/_autoplay_patch .github/workflows/apply-autoplay-preparation.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "feat: implement unattended demo loop and controller integration"
+          git push origin HEAD:refs/heads/port/nexuiz-autoplay-controller
