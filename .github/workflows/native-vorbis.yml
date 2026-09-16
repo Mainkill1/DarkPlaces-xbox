@@ -1,0 +1,59 @@
+name: Native Ogg Vorbis libraries
+on:
+  push:
+    branches: [build/nexuiz-native-dependencies]
+    paths: ['.github/workflows/native-vorbis.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  codecs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-sdk
+          run-id: 35154666036
+          github-token: ${{ github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: xiph/ogg
+          ref: e1774cd77f471443541596e09078e78fdc342e4f
+          path: ogg
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: xiph/vorbis
+          ref: 0657aee69dec8508a0011f47f3b69d7538e9d262
+          path: vorbis
+          persist-credentials: false
+      - name: Build native libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y clang llvm lld cmake
+          tar xzf native-sdk.tar.gz
+          export NXDK_DIR="$GITHUB_WORKSPACE/nxdk"
+          export PATH="$NXDK_DIR/bin:$PATH"
+          cmake -S ogg -B ogg/build -DCMAKE_TOOLCHAIN_FILE="$NXDK_DIR/share/toolchain-nxdk.cmake" \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+            -DBUILD_TESTING=OFF -DINSTALL_DOCS=OFF -DBUILD_SHARED_LIBS=OFF
+          cmake --build ogg/build -j4
+          cmake -S vorbis -B vorbis/build -DCMAKE_TOOLCHAIN_FILE="$NXDK_DIR/share/toolchain-nxdk.cmake" \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY \
+            -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF \
+            -DOGG_INCLUDE_DIR="$GITHUB_WORKSPACE/ogg/include" \
+            -DOGG_LIBRARY="$GITHUB_WORKSPACE/ogg/build/libogg.lib" \
+            -DCMAKE_C_FLAGS="-I$GITHUB_WORKSPACE/ogg/build/include -Dalloca=__builtin_alloca"
+          cmake --build vorbis/build -j4
+      - name: Archive library sources and build outputs
+        if: always()
+        run: tar czf native-vorbis.tar.gz --exclude='*/.git' ogg vorbis
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-vorbis
+          path: native-vorbis.tar.gz
+          if-no-files-found: error
