@@ -121,7 +121,7 @@ jobs:
           cl_minfps_force 0
           cl_minfps_qualitymin 1
           cl_minfps_qualitymax 1
-          // Zero-action attract mode. Any controller action can leave playback via menu/escape.
+          // Zero-action attract mode.
           startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake
           CFG
           printf '%s\n' "$DATA_DIR" > xbox/classic/build/source-data-path.txt
