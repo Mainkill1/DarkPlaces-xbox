@@ -98,7 +98,7 @@ cvar_t cl_deathnoviewmodel = {CF_CLIENT, "cl_deathnoviewmodel", "1", "hides gun 
 cvar_t cl_locs_enable = {CF_CLIENT | CF_ARCHIVE, "locs_enable", "1", "enables replacement of certain % codes in chat messages: %l (location), %d (last death location), %h (health), %a (armor), %x (rockets), %c (cells), %r (rocket launcher status), %p (powerup status), %w (weapon status), %t (current time in level)"};
 cvar_t cl_locs_show = {CF_CLIENT, "locs_show", "0", "shows defined locations for editing purposes"};
 
-cvar_t cl_minfps = {CF_CLIENT | CF_ARCHIVE, "cl_minfps", "40", "minimum fps target - while the rendering performance is below this, it will drift toward lower quality"};
+cvar_t cl_minfps = {CF_CLIENT | CF_ARCHIVE, "cl_minfps", "0", "minimum fps target - while the rendering performance is below this, it will drift toward lower quality"};
 cvar_t cl_minfps_fade = {CF_CLIENT | CF_ARCHIVE, "cl_minfps_fade", "1", "how fast the quality adapts to varying framerate"};
 cvar_t cl_minfps_qualitymax = {CF_CLIENT | CF_ARCHIVE, "cl_minfps_qualitymax", "1", "highest allowed drawdistance multiplier"};
 cvar_t cl_minfps_qualitymin = {CF_CLIENT | CF_ARCHIVE, "cl_minfps_qualitymin", "0.25", "lowest allowed drawdistance multiplier"};

@@ -25,6 +25,7 @@ OBJ_COMMON= \
 	cl_collision.o \
 	cl_demo.o \
 	cl_attract.o \
+	cl_graphics_menu.o \
 	xbox/attract_policy.o \
 	cl_ents.o \
 	cl_ents4.o \

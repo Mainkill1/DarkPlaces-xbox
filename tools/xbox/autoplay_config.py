@@ -4,6 +4,12 @@ import re
 
 CONTROLS = '''// Generated Original Xbox/Nexuiz attract profile. Do not hand-edit generated packs.
 cl_startdemos 0
+// Fixed workload by default; the controller menu may explicitly enable adaptation.
+cl_minfps 0
+cl_minfps_force 0
+cl_minfps_qualitymin 0.25
+cl_minfps_qualitymax 1
+xbox_autoquality_target 60
 joy_enable 1
 joy_x360_axisforward 1
 joy_x360_axisside 0
