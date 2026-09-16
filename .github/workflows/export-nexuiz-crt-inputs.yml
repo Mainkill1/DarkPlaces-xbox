@@ -1,0 +1,26 @@
+name: Export CRT implementation inputs
+on:
+  push:
+    branches: ['work/nexuiz-sdk-export']
+    paths: ['.github/workflows/export-nexuiz-crt-inputs.yml']
+permissions:
+  contents: read
+jobs:
+  inputs:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Fetch source only, no code execution
+        run: |
+          mkdir -p inputs/musl
+          curl -fL --retry 2 'https://raw.githubusercontent.com/nothings/stb/1ee679ca2ef753a528db5ba6801e1067b40481b8/stb_sprintf.h' -o inputs/stb_sprintf.h
+          for path in src/internal/floatscan.c src/internal/floatscan.h src/internal/shgetc.c src/internal/shgetc.h src/stdlib/strtod.c COPYRIGHT; do
+            curl -fL --retry 2 "https://git.musl-libc.org/cgit/musl/plain/$path?h=v1.2.5" -o "inputs/musl/$(basename "$path")"
+          done
+          (cd inputs && sha256sum stb_sprintf.h musl/* > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nexuiz-crt-source-inputs
+          path: inputs/
+          if-no-files-found: error
+          retention-days: 7
