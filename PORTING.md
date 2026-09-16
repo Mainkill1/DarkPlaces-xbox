@@ -4,9 +4,13 @@ The port is organized around acceptance gates, not a single long-lived “make i
 
 The live execution source of truth is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1). Its child issues contain dependencies, deliverables, evidence requirements, and completion criteria. The `wiki/` directory records durable architecture and policy.
 
+## Approved scope
+
+[Option B](wiki/Playable-Game-and-LAN.md) is the release contract: fully playable Nexuiz Classic offline plus LAN, with autoplay/benchmarking retained. The existing diagnostic boot does not satisfy engine/game acceptance. Keep local/listen-server code, required gamecode, audio and persistence in the production target; Internet services remain excluded.
+
 ## First useful sequence
 
-1. Lock the MVP, compatibility promise, reference workload, source/dependency audit, content policy, and renderer baseline.
+1. Apply the approved Option B scope to the full game-content audit, source/dependency set, memory plan and native renderer coverage.
 2. Pin nxdk and build a tiny repository-owned XBE/XISO.
 3. Compile the DarkPlaces core with Xbox feature pruning and no production renderer.
 4. Boot into a visible console with reliable logging, timing, filesystem access, and fatal-error reporting.
@@ -14,9 +18,11 @@ The live execution source of truth is the [master port epic](https://github.com/
 6. Add `RENDERPATH_XBOX` and present a cleared frame through pbkit/NV2A.
 7. Draw a textured indexed mesh, then the 2D console.
 8. Load and render a small BSP with lightmaps.
-9. Add the Nexuiz material/model/effect subset required by the selected stress world.
-10. Run one deterministic looping camera path and record machine-readable telemetry.
-11. Hold the complete workload under the 64 MB budget on real hardware.
+9. Add the material/model/effect coverage required by the full pinned game, not only its demo.
+10. Complete offline games with bots/campaign, audio, controller menus and persistence (#35).
+11. Host and join LAN games, with discovery, address entry and connection recovery (#36).
+12. Retain the continuous benchmark with fixed/adaptive settings and distinct real-time/throughput behavior.
+13. Validate complete games, content coverage, LAN and benchmark loops under the measured 64 MiB budget on xemu and hardware.
 
 The phase gates are in [wiki/Porting-Roadmap.md](wiki/Porting-Roadmap.md), and the live issue-to-phase mapping is in [wiki/Issue-Map.md](wiki/Issue-Map.md).
 
@@ -34,8 +40,9 @@ xbox/
 
 sys_xbox.c                 process, timing, logging, fatal error handling
 vid_xbox.c                 controller events, video lifecycle, present
-snd_xbox.c                 audio backend or explicit no-audio backend
-thread_xbox.c              threading primitives / single-thread fallback
+snd_xbox.c                 required production audio backend (null is diagnostic-only)
+thread_xbox.c              engine threading / deliberate single-thread model
+network adapter            native LHNET sockets/lifecycle; retain netconn protocol
 r_xbox.c / r_xbox_*.c      RENDERPATH_XBOX backend modules
 ```
 

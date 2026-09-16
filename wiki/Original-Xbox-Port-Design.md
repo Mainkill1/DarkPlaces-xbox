@@ -8,7 +8,7 @@ The port does **not** treat nxdk SDL2 as an OpenGL implementation. SDL2 may prov
 
 ## Acceptance product
 
-The first product is not a feature-complete console game. It is a deterministic benchmark application that:
+The owner-approved [Option B](Playable-Game-and-LAN) supersedes the initial benchmark-only scope. The release must provide fully playable Nexuiz Classic offline and LAN host/join, actual gamecode, audio, controller UI and persistence. The retained benchmark mode:
 
 - boots as an XBE and XISO;
 - loads a verified Nexuiz-derived content subset;
@@ -23,7 +23,8 @@ The first product is not a feature-complete console game. It is a deterministic 
 
 - command/cvar and host lifecycle;
 - virtual filesystem and package search;
-- QuakeC VM and selected game logic;
+- local/listen server, required QuakeC VMs, bots and real pinned game logic;
+- connection/discovery protocol and native LAN transport adaptation;
 - BSP/model parsing and visibility;
 - entity, particle, and camera simulation;
 - high-level render queue and material interpretation;
@@ -35,7 +36,8 @@ The first product is not a feature-complete console game. It is a deterministic 
 - launch path, read-only media, and writable result/config paths;
 - controller input and hot-plug state;
 - threading primitives or a deterministic single-thread fallback;
-- audio output and an explicit no-audio mode;
+- required game audio output; an explicit no-audio diagnostic/benchmark mode;
+- nonblocking/bounded LAN address and socket lifecycle, without required Internet services;
 - 64 MB budget enforcement and platform resource reporting.
 
 ### Xbox renderer responsibilities
@@ -57,7 +59,7 @@ Every selected content feature must resolve to one of five statuses:
 2. **Multipass** — multiple bounded passes with measured cost.
 3. **Approximate** — visually different but workload-preserving fallback.
 4. **Disabled** — intentionally removed from the Xbox profile.
-5. **Deferred** — excluded from the first accepted benchmark.
+5. **Deferred** — explicitly outside the approved release scope, not an excuse to omit required gameplay, audio or LAN.
 
 Unknown combinations are errors or visible fallback materials. They must never silently select an unrelated shader.
 
@@ -92,6 +94,10 @@ No unsupported service or render feature may fail as a silent hang. Errors inclu
 - xemu proves automated boot, completion, result extraction, and emulator regression use.
 - Retail 64 MB hardware proves resource and long-run acceptance.
 - Desktop DarkPlaces supplies a content/path reference, not a pixel-identical renderer oracle.
+
+## Full-game acceptance
+
+The diagram/rendering gates alone do not complete the game. Issues #35/#36 require complete offline matches/campaign paths, LAN in both host/client roles, audio, saved preferences, content coverage and recovery. Preserve controller-adjustable graphics with auto-quality OFF by default and deliberate transitions between gameplay and autoplay. See [Playable Game and LAN](Playable-Game-and-LAN) for the contract.
 
 ## Change rule
 

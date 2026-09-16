@@ -1,35 +1,38 @@
 # Feature Support Matrix
 
-This matrix is a policy document. Update it whenever a PR changes Xbox behavior.
+This matrix states required policy, **not proof of implementation**. [Option B](Playable-Game-and-LAN) supersedes the benchmark-only scope. The current native executables remain diagnostics; update execution status only with evidence.
 
 | System | First release policy | Validation |
 |---|---|---|
 | Desktop SDL renderer | Preserve | Existing `sdl-release` CI |
-| Xbox video | 480p-first, fixed mode | xemu + retail hardware |
+| Xbox video | Tested mode selection compatible with attached output; no assumed 480p prerequisite | xemu + retail hardware |
 | Generic textured mesh | Native | reference capture |
 | 2D console/menu | Native | text and UI screenshots |
-| Q3 BSP/PVS | Required | selected Nexuiz map |
+| Q3 BSP/PVS | Required | full pinned map inventory, not only a demo |
 | Lightmaps | Required | static comparison |
 | Alpha test/blend/additive | Required | stress-zone markers |
 | Fog | Required, approximation allowed | deterministic capture |
 | Sky | Required, simplified allowed | map comparison |
 | MD3/required Nexuiz models | Required after audit | animation capture |
-| Skeletal formats not used by target | Deferred | content audit |
+| Skeletal formats used anywhere in pinned game | Required | full-game content/animation audit |
 | Particles/sprites/decals | Required | count and overdraw zones |
 | Dynamic lights | Required subset | controlled scene |
 | DOT3/normal mapping | Required subset | controlled scene |
 | Cubemap reflections | Desired | fallback documented |
 | Water/refraction | Approximate or multipass | comparison + timing |
-| Realtime shadows | Disabled initially | fallback counter |
+| Realtime shadows | Native/multipass or explicit cosmetic approximation; required game visibility preserved | coverage and cost report |
 | Deferred rendering | Disabled | compile-time exclusion |
-| HDR/bloom/FXAA | Disabled | compile-time exclusion |
+| HDR/bloom/FXAA | Individually audit; unsupported native settings must be explicit, no blanket capability claim | native recipe or visible unsupported policy |
 | Video capture/playback | Disabled | build audit |
-| ODE physics | Disabled unless target content proves need | content audit |
+| ODE physics | Retain required game behavior if any pinned map/mode depends on it; otherwise exclude | full-game content audit |
 | Dynamic library loading | Disabled | link audit |
 | Curl/http downloads | Disabled initially | network audit |
-| Multiplayer networking | Deferred | not required for benchmark |
+| Offline game/client/server/VM/bots | Required | complete matches and campaign paths, #35 |
+| LAN host/join/discovery/direct address | Required | two-way native sessions and published limits, #36 |
+| Internet browsing/advertising/NAT services | Excluded from Option B | no unsolicited external service traffic |
+| Settings and supported progression persistence | Required | save/relaunch and failed-write recovery |
 | Controller input | Required for controls | hardware test |
-| Audio | Optional for benchmark, backend planned | no-audio mode must work |
+| Audio | Required for playable game; muted/no-audio benchmarking remains an explicit separate profile | positional effects, music, underrun/restart tests |
 | Runtime PNG/JPEG decoding | Bring-up only where affordable | memory trace |
 | Preconverted asset cache | Required for final workload | cache hit report |
 

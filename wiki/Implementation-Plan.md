@@ -1,10 +1,10 @@
 # Implementation Plan
 
-The executable work plan is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its child issues #2–#30. Issue bodies own dependencies, acceptance criteria, and required evidence. This page defines how those issues should be implemented and merged.
+The executable work plan is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its child issues #2–#30 plus #35 (offline gameplay) and #36 (LAN). Issue bodies own dependencies, acceptance criteria, and required evidence. This page defines how those issues should be implemented and merged.
 
 ## Gate 0 — Architecture and reference
 
-1. Bound the MVP and explicitly defer non-benchmark compatibility.
+1. Apply [Option B](Playable-Game-and-LAN): complete offline Nexuiz plus LAN, audio and persistence, retaining the benchmark. Do not keep obsolete benchmark-only exclusions.
 2. Produce the NV2A renderer-baseline spike before selecting the production architecture.
 3. Freeze a desktop reference workload, inputs, configuration, checkpoints, and output schema.
 4. Complete the source/dependency and licensing audits.
@@ -58,10 +58,12 @@ Each step must preserve previous reference fixtures. Unsupported features remain
 
 Do not publish performance results until workload progression is independent of frame rate and result profiles identify every timing/audio mode.
 
-## Gate 5 — Benchmark product
+## Gate 5 — Complete game, LAN and benchmark
+
+Before release, #35 must complete real offline matches/campaign paths with audio, saved state and controller UI. #36 must complete LAN discovery/direct joining/listen hosting, map transitions and reconnect. Keep the native game client/server/VM link and measure their combined memory. Socket work may proceed in parallel with the renderer, but end-to-end game evidence depends on both. The first rendered map is an intermediate gate.
 
 1. Acquire and hash approved source content.
-2. Inventory reachable maps, materials, textures, models, effects, sounds, scripts, and demos.
+2. Inventory the entire pinned game map/mode/campaign corpus and dependencies, then the additional benchmark world. Record every item tested, blocked or explicitly excepted; do not silently narrow to one working demo.
 3. Convert Xbox-ready assets deterministically and preserve source/license traceability.
 4. Select or author the continuous world and versioned camera spline.
 5. Define workload targets and invalidating caps/fallbacks for every region.
@@ -74,7 +76,7 @@ The standard profile is frozen only after counters prove every intended region i
 
 1. Automate tiered xemu execution from build/package through the complete loop.
 2. Preserve compact failure bundles and reject mismatched profiles.
-3. Validate fixtures, one full loop, 30-minute runs, multi-hour runs, and the release soak on retail 64 MiB hardware.
+3. Validate complete offline/LAN matches, campaign/progression where supplied, all inventoried maps/modes, save/relaunch, network/controller recovery, the full benchmark loop and extended soak on retail 64 MiB hardware.
 4. Profile and remove accidental port overhead without weakening workload coverage.
 5. Build a manifest-approved release containing only redistributable files and required notices.
 

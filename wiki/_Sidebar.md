@@ -1,6 +1,7 @@
 **DarkPlaces Xbox**
 
 - [Home](Home)
+- [Playable Game and LAN](Playable-Game-and-LAN)
 - [Goals and Scope](Port-Goals-and-Scope)
 - [Port Design](Original-Xbox-Port-Design)
 - [Architecture](Architecture)

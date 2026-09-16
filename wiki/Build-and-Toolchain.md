@@ -4,15 +4,14 @@
 
 Use nxdk with a pinned revision. Developers may point `NXDK_DIR` at an external checkout; CI must clone the same pinned revision so a build can be reproduced later.
 
-The first Xbox build should live behind a clear entry point such as:
+Existing diagnostic targets are:
 
 ```bash
-make xbox-smoke NXDK_DIR=/path/to/nxdk
-make xbox-debug NXDK_DIR=/path/to/nxdk
-make xbox-release NXDK_DIR=/path/to/nxdk
+make -C xbox NXDK_DIR=/path/to/nxdk
+make -C xbox/inputcheck NXDK_DIR=/path/to/nxdk
 ```
 
-The final names are decided in the build issue, but all targets must emit an XBE and optionally an XISO into a dedicated ignored output directory.
+Neither command builds the full game. The production engine needs a distinct target and output directory under issue #7, preserving the known diagnostics. Do not advertise a full-game build command before it exists.
 
 ## Build stages
 
@@ -22,7 +21,7 @@ Compile a tiny program from this repository, print a build identifier, present a
 
 ### Stage 1: core compile
 
-Compile a curated DarkPlaces object set with renderer, audio, networking, DLL loading, video capture, ODE, XMP, and other optional dependencies disabled. Record every exclusion in the feature matrix.
+An internal core diagnostic may temporarily omit renderer/audio/network outputs. Keep its exclusions explicit and separate from the playable profile. The production [Option B](Playable-Game-and-LAN) link requires the client, local/listen server, game VMs, collision, VFS, native renderer, controller, audio, persistence and LAN transport. Omit only dependencies proved unnecessary by the actual content audit; do not blanket-remove the server or game-required codecs/VM services.
 
 ### Stage 2: boot console
 
@@ -31,6 +30,10 @@ Enter the DarkPlaces host loop far enough to display/log initialization and read
 ### Stage 3: renderer bring-up
 
 Add only the Xbox renderer objects required for clear/present, then build capability one gate at a time.
+
+### Stage 4: playable game and LAN
+
+Link all required game services into the same XBE. Validate real offline matches under #35 and LAN hosting/joining under #36, then package the full audited content set. A diagnostic object compile or standalone input screen cannot close these gates.
 
 ## Build isolation
 

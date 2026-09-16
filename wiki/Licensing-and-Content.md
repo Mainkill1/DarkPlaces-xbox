@@ -17,7 +17,7 @@ Do not commit:
 
 ## Nexuiz data
 
-Do not assume every file in a historical game package has one uniform license. The content audit must produce a file/category-level manifest for the map, textures, models, sounds, scripts, fonts, and derivative conversions selected for the benchmark.
+Do not assume every file in a historical game package has one uniform license. The content audit must produce a file/category-level manifest for the map, textures, models, sounds, scripts, fonts, and derivative conversions required by the full playable game and the benchmark. Pin the complete map/mode/campaign inventory; license exceptions or content omissions must be visible and approved.
 
 Prepared Xbox assets retain the license obligations of their sources. Store source attribution and conversion command/hash next to the pack manifest.
 
@@ -26,7 +26,7 @@ Prepared Xbox assets retain the license obligations of their sources. Store sour
 A release may be:
 
 1. Engine-only XBE/XISO tooling requiring the user to provide data.
-2. Engine plus a fully audited redistributable benchmark pack.
+2. Engine plus fully audited redistributable game content and the benchmark pack.
 3. Developer artifact with generated test geometry only.
 
-Do not publish option 2 until the licensing issue is complete.
+Do not publish option 2 until the licensing issue is complete. A developer fixture or demo-only data pack is not the complete playable-game release.

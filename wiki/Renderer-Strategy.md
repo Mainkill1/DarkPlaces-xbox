@@ -1,5 +1,9 @@
 # Renderer Strategy
 
+## Option B coverage
+
+The [playable-game contract](Playable-Game-and-LAN) requires coverage of the complete pinned Nexuiz game, not only the benchmark route. The bring-up ladder below is an implementation sequence, not a reduced release promise. Cosmetic approximations must preserve gameplay-critical visibility, actors, collision cues and HUD information.
+
 ## Why a new render path is required
 
 Modern DarkPlaces exposes `RENDERPATH_GL32` and `RENDERPATH_GLES2`. Its material system selects many GLSL modes and permutations for generic drawing, lightmaps, model lighting, realtime lights, water, refraction, reflections, fog, skeletal transforms, shadows, and postprocessing.
@@ -47,7 +51,7 @@ The backend must never silently render a complex material as a random generic te
 - General GLSL compiler or translator.
 - Deferred lighting.
 - Modern shadow-map pipeline.
-- HDR/bloom/FXAA.
+- Exact parity for modern post-processing; individual controls require a supported native recipe or an explicit unsupported state.
 - Unlimited material permutations.
 - Visual parity with desktop DarkPlaces.
 

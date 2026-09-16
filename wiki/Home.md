@@ -1,20 +1,21 @@
 # DarkPlaces Original Xbox Port
 
-This wiki is the source of truth for preparing DarkPlaces and selected Nexuiz content for the original Xbox.
+This wiki is the source of truth for the playable Nexuiz Classic Original Xbox port, including offline play, LAN multiplayer and the continuous stress benchmark.
 
 ## Objective
 
-Produce a deterministic, continuously looping 3D stress world that transitions through mixed workloads without returning to a menu or separate microtests. The camera should move through texture-heavy, geometry-heavy, alpha/overdraw-heavy, particle-heavy, math-heavy, animated, and combined scenes. The same content and path must run in xemu and on a standard 64 MB retail Xbox.
+Option B is approved: deliver a fully playable offline game plus LAN host/join, audio, persistence and controller menus. Retain a deterministic, continuously looping 3D stress world that transitions through mixed workloads without returning to a menu or separate microtests. The camera should move through texture-heavy, geometry-heavy, alpha/overdraw-heavy, particle-heavy, math-heavy, animated, and combined scenes. The same content and path must run in xemu and on a standard 64 MB retail Xbox.
 
 ## Current reality
 
-The repository is a fresh fork of modern DarkPlaces. Its renderer supports OpenGL 3.2 and GLES2, while nxdk provides native NV2A graphics facilities rather than a compatible implementation of those DarkPlaces render paths. The port therefore needs an explicit `RENDERPATH_XBOX`, a reduced feature policy, and careful 64 MB asset management.
+PRs #31–#34 are merged. The user has shown the diagnostic boot in xemu; the native full-game engine is not yet implemented. This fork is based on modern DarkPlaces. Its renderer supports OpenGL 3.2 and GLES2, while nxdk provides native NV2A graphics facilities rather than a compatible implementation of those DarkPlaces render paths. The port therefore needs an explicit `RENDERPATH_XBOX`, a reduced feature policy, and careful 64 MB asset management.
 
-The live implementation queue is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its linked issues #2–#30. Wiki pages describe the durable design; issues own execution status and evidence.
+The live implementation queue is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its linked issues #2–#30 plus #35 (offline gameplay) and #36 (LAN). Wiki pages describe the durable design; issues own execution status and evidence.
 
 ## Navigation
 
 - [Live port epic and issue queue](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
+- [Playable game and LAN — approved Option B](Playable-Game-and-LAN)
 - [Port goals and scope](Port-Goals-and-Scope)
 - [Port design](Original-Xbox-Port-Design)
 - [Architecture](Architecture)

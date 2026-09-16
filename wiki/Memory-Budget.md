@@ -2,7 +2,13 @@
 
 The original Xbox has 64 MB of unified memory shared by CPU, GPU resources, executable code, engine state, content, audio, and transient work. A port that only runs on a 128 MB upgraded console has not met the baseline.
 
-## Initial working budget
+## Option B budget revision required
+
+The table below predates playable offline/LAN acceptance and is **not a validated allocation envelope**. Issue #13 must account for the local client plus listen server, game VMs, bots/entities, collision, network queues and SDK threads/stacks concurrently with rendering and audio. Measure actual memory available after runtime/platform initialization; do not treat the whole physical 64 MiB as free application memory.
+
+Record offline, LAN client, LAN host and benchmark peaks separately, including map-change overlap and fragmentation. Choose player/bot limits from measurements; do not add network allocations on top of an already full table or enable 128 MiB to hide a deficit.
+
+## Initial working budget (historical planning estimate)
 
 These are planning caps, not measured truth. The allocator telemetry issue must replace estimates with high-water values.
 

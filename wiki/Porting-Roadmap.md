@@ -6,7 +6,7 @@ The phases are dependency gates. Later work may be researched in parallel, but i
 
 Issues [#2–#6](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1):
 
-- Define the benchmark-focused MVP and long-term compatibility boundary.
+- Apply approved [Option B](Playable-Game-and-LAN): fully playable offline Nexuiz plus LAN; benchmark mode remains included.
 - Choose the renderer baseline from a working NV2A spike, not assumptions about SDL or OpenGL.
 - Pin a reproducible desktop Nexuiz reference workload.
 - Classify every source file and dependency for keep, gate, replace, or exclude.
@@ -60,11 +60,13 @@ Issues [#23–#25](https://github.com/Mainkill1/DarkPlaces-xbox/issues/23):
 
 **Exit:** the route is controllable but scored playback is input-safe, audio mode is explicit, and repeated runs produce the same timeline/checkpoint state.
 
-## Phase 5 — Content and continuous stress world
+## Phase 5 — Complete game, LAN, content and continuous stress world
+
+[#35](https://github.com/Mainkill1/DarkPlaces-xbox/issues/35) adds controller-operated offline matches/campaign, real gamecode, audio and persistence. [#36](https://github.com/Mainkill1/DarkPlaces-xbox/issues/36) adds native LAN discovery/direct join/listen hosting and recovery. Both are release gates. Transport and platform work can run in parallel; a full-game run still depends on native rendering and actual content.
 
 Issues [#26–#28](https://github.com/Mainkill1/DarkPlaces-xbox/issues/26):
 
-- Pin approved Nexuiz content and convert only reachable assets reproducibly.
+- Pin the full Nexuiz Classic map/mode/campaign inventory and all required game assets, plus the benchmark route; publish coverage rather than silently omitting failures.
 - Build one coherent map and slow route through geometry, texture, fuzz/alpha, math, particles, animation, lighting, water/reflection, audio, and combined-load districts.
 - Add unattended warmup/run/loop state, watchdogs, bounded telemetry, durable summaries, and recovery evidence.
 
@@ -76,7 +78,7 @@ Issues [#29–#30](https://github.com/Mainkill1/DarkPlaces-xbox/issues/29):
 
 - Build tiered xemu gates from boot through the complete world loop.
 - Compare only matching engine, nxdk, xemu, content, memory, video, effect, audio, and timing profiles.
-- Validate short, 30-minute, multi-hour, and release-candidate soak runs on an unmodified 64 MiB console.
+- Validate short, 30-minute, multi-hour, and release-candidate soak runs on a stock-memory 64 MiB console with a homebrew-capable launch environment.
 - Publish reproducible, legally approved artifacts, manifests, symbols, parsers, notices, and known limits.
 
-**Exit:** the complete route passes xemu regression and retail-hardware soak criteria, and the release can be rebuilt and audited from its declared inputs.
+**Exit:** complete offline/LAN matches, audio/persistence/controller recovery, full content coverage and the benchmark route pass xemu and retail-hardware acceptance. The release can be rebuilt and audited from declared inputs.

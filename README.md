@@ -1,43 +1,57 @@
-# DarkPlaces for the Original Xbox
+# DarkPlaces / Nexuiz for the Original Xbox
 
-This fork is preparing DarkPlaces and selected Nexuiz content for the original Xbox using the open-source [nxdk](https://github.com/XboxDev/nxdk) toolchain.
-
-The immediate target is **not a feature-complete Nexuiz console port**. The first useful product is a deterministic, continuously looping stress world that moves through mixed workloads: large BSP spaces, dense texture sets, transparency and overdraw, particles, animated geometry, math-heavy deformation, dynamic lighting, and deliberately expensive combined scenes. It must run in xemu and on a standard 64 MB retail Xbox.
+This fork targets **a fully playable Nexuiz Classic game with offline play and
+LAN hosting/joining**, using the open-source [nxdk](https://github.com/XboxDev/nxdk)
+toolchain. Automatic demo playback, controller-browsable graphics settings and a
+continuous mixed-world benchmark remain part of the game. The owner approved
+this Option B scope on 2026-09-16; it replaces the original benchmark-only target.
 
 ## Current status
 
-**Planning and repository preparation. No Xbox XBE is expected to build yet.**
+PRs #31–#34 are merged at `3e273cb6a0fd96914c809c3b505de70d309600db`.
+The foundation and controller-only diagnostics build, and the owner supplied an
+xemu screenshot of the foundation ready screen from source `d9ede38a`.
+Autoplay, controller and graphics-menu components are in the engine source and
+have host/build tests. **A playable native Xbox engine is not yet implemented.**
+The native system/filesystem/renderer/audio/LAN integration and real game-content
+validation are still required; merging preparation code does not change that.
 
-The live execution plan is [issue #1](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1), with the staged work split across [issues #2–#30](https://github.com/Mainkill1/DarkPlaces-xbox/issues). The repository contains the port design, contribution rules, issue templates, wiki source, validation checks, and a wiki publishing workflow.
+`make -C xbox` still builds the foundation diagnostic, not Nexuiz. Its
+`renderer=disabled` output describes that target, not an option for enabling a
+hidden finished game. Keep the working diagnostic as a separate regression target.
 
-The modern DarkPlaces renderer currently exposes OpenGL 3.2 and GLES2 paths. nxdk supplies SDL2 for input/audio/2D and native NV2A graphics APIs, but it does not make the existing DarkPlaces GL renderer a drop-in Xbox renderer. The central porting task is therefore a deliberately reduced `RENDERPATH_XBOX` backend with explicit feature fallbacks.
+## Release target
 
-The canonical wiki source is the `wiki/` directory. GitHub does not create the separate Wiki Git repository until its first Home page is initialized; after that one-time repository action, the **Publish repository wiki** workflow synchronizes these pages.
+Offline matches/bots and the campaign/progression supplied by the pinned Classic
+content; real gameplay, audio, controller-only menus, persistent settings; LAN
+host, discovery and manual join; automatic demo loops and graphics options with
+automatic quality OFF by default. Stock 64 MiB is the memory target, with a
+homebrew-capable launch environment. Internet browsing/advertising, account
+services, NAT traversal and automatic external downloads are outside Option B.
+
+The complete map/mode inventory must be tracked. An unsupported item is a visible
+blocker or explicit scope exception, not silently omitted to call a subset complete.
 
 ## Start here
 
-- [Live port epic and work queue](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
-- [Porting entry point](PORTING.md)
-- [Wiki home source](wiki/Home.md)
-- [Port goals and scope](wiki/Port-Goals-and-Scope.md)
-- [Port design](wiki/Original-Xbox-Port-Design.md)
-- [Architecture](wiki/Architecture.md)
-- [Renderer strategy](wiki/Renderer-Strategy.md)
-- [Roadmap](wiki/Porting-Roadmap.md)
-- [Implementation plan](wiki/Implementation-Plan.md)
-- [Issue map](wiki/Issue-Map.md)
-- [Contribution workflow](wiki/Contribution-Workflow.md)
+- [Approved playable-game and LAN design](wiki/Playable-Game-and-LAN.md)
+- [Live port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
+- [Porting entry point](PORTING.md) and [build targets](wiki/Build-and-Toolchain.md)
+- [Wiki home](wiki/Home.md), [architecture](wiki/Architecture.md), [feature matrix](wiki/Feature-Support-Matrix.md)
+- [Roadmap](wiki/Porting-Roadmap.md), [implementation order](wiki/Implementation-Plan.md), [issue map](wiki/Issue-Map.md)
 
-## Non-negotiable constraints
+## Constraints
 
-- Open-source nxdk toolchain only; no proprietary Xbox SDK files.
-- Standard 64 MB retail hardware is the baseline. A 128 MB console may be used for diagnostics, never as the acceptance target.
-- Keep the existing desktop `sdl-release` build working.
-- Preserve upstream-friendly boundaries: Xbox-specific code belongs in Xbox files or narrowly scoped compile guards.
-- Do not commit retail game data, BIOS files, EEPROM data, keys, or unreviewed third-party assets.
-- Every performance or compatibility claim needs reproducible evidence from xemu and, when the milestone requires it, real hardware.
-- The final workload is one continuous world and route, not a launcher for unrelated microtests.
+Use open-source components only; do not commit proprietary XDK material, BIOS,
+EEPROM, keys or unreviewed content. Preserve the desktop `make sdl-release` path.
+Use explicit Xbox platform/native NV2A boundaries, not assumed desktop OpenGL
+compatibility. Keep 128 MiB diagnostics separate from 64 MiB acceptance. Every
+compatibility/performance claim must identify its build, content and executed gate.
+
+Canonical port documentation lives in `wiki/`. The separate GitHub Wiki is a
+published copy; its initialization/publication state is independent of game builds.
 
 ## Upstream
 
-This repository is based on [DarkPlacesEngine/DarkPlaces](https://github.com/DarkPlacesEngine/DarkPlaces). DarkPlaces remains GPL-licensed; see [COPYING](COPYING) and [CREDITS.md](CREDITS.md).
+Based on [DarkPlacesEngine/DarkPlaces](https://github.com/DarkPlacesEngine/DarkPlaces).
+Preserve the license and notices in [COPYING](COPYING) and [CREDITS.md](CREDITS.md).

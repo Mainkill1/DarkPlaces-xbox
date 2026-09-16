@@ -6,11 +6,11 @@ Do not run or create a second roadmap beside these issues.
 
 ## Epic
 
-- [#1 — Port DarkPlaces/Nexuiz stress world to the original Xbox](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
+- [#1 — Playable Nexuiz offline/LAN and stress world on the original Xbox](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1)
 
 ## Phase 0 — Architecture and reference
 
-- [#2 — Define the Xbox MVP, compatibility promise, and explicit exclusions](https://github.com/Mainkill1/DarkPlaces-xbox/issues/2)
+- [#2 — Apply approved Option B playable/LAN scope and compatibility contract](https://github.com/Mainkill1/DarkPlaces-xbox/issues/2)
 - [#3 — Choose the renderer baseline with an NV2A proof-of-concept](https://github.com/Mainkill1/DarkPlaces-xbox/issues/3)
 - [#4 — Capture a reproducible desktop Nexuiz reference workload](https://github.com/Mainkill1/DarkPlaces-xbox/issues/4)
 - [#5 — Audit every subsystem and dependency for the Xbox link set](https://github.com/Mainkill1/DarkPlaces-xbox/issues/5)
@@ -57,6 +57,13 @@ Do not run or create a second roadmap beside these issues.
 
 **Gate:** the appliance is operable without a keyboard, incidental input cannot alter scored playback, audio cost and mode are explicit, and repeated runs hit the same timeline checkpoints independent of render speed.
 
+## Playable game and LAN — required release gates
+
+- [#35 — Complete playable Nexuiz offline matches, campaign and content coverage](https://github.com/Mainkill1/DarkPlaces-xbox/issues/35)
+- [#36 — Implement Original Xbox LAN discovery, hosting and joining](https://github.com/Mainkill1/DarkPlaces-xbox/issues/36)
+
+**Gate:** real controller-operated offline and LAN games, audio, persistence, content coverage and recovery run in the same native engine. The [Option B design](Playable-Game-and-LAN) supersedes benchmark-only completion. Existing #23/#24/#26 remain responsible for their components.
+
 ## Phase 5 — Content and continuous stress world
 
 - [#26 — Pin Nexuiz content and build a reproducible Xbox asset pipeline](https://github.com/Mainkill1/DarkPlaces-xbox/issues/26)
@@ -70,4 +77,4 @@ Do not run or create a second roadmap beside these issues.
 - [#29 — Build the xemu regression harness and first complete demo gate](https://github.com/Mainkill1/DarkPlaces-xbox/issues/29)
 - [#30 — Validate retail hardware, complete soak testing, and publish the first stress-suite release](https://github.com/Mainkill1/DarkPlaces-xbox/issues/30)
 
-**Gate:** the complete route passes the tiered xemu harness, an unmodified 64 MiB Xbox passes the declared route and soak criteria, and the release is reproducible and license-clean.
+**Gate:** complete offline/LAN games and the benchmark route pass the tiered xemu harness, a stock-memory 64 MiB Xbox in a homebrew-capable launch environment passes the declared route and soak criteria, and the release is reproducible and license-clean.
