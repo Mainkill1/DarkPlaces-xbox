@@ -1,0 +1,131 @@
+# Nexuiz Xbox release-candidate build
+
+This directory is the **single first-build entry point** for producing the complete playable-game XBE/XISO candidate. It exists so an engineer does not have to guess between the repository's diagnostic targets and renderer-development targets.
+
+## Which target is which?
+
+| Path | Purpose |
+|---|---|
+| `xbox/Makefile` | nxdk/foundation diagnostic only |
+| `xbox/inputcheck/` | controller diagnostic only |
+| `xbox/game/` | modern-engine direct `RENDERPATH_XBOX` development path; native renderer still incomplete |
+| `xbox/classic/` | integrated Nexuiz-era DarkPlaces + pbGL/NV2A + Xbox platform/audio/network target |
+| **`xbox/release/`** | **canonical first end-to-end release-candidate wrapper around `xbox/classic`** |
+
+Using `xbox/classic` for the first complete build does not declare the direct-native renderer work abandoned. It gives the project one complete integration route to boot and profile while the lower-level native backend continues to mature.
+
+## Inputs
+
+`release-inputs.json` locks every external source and the complete Nexuiz 2.5.2 archive. The build does not accept branch names, moving tags, or an unverified game archive.
+
+Current source inputs:
+
+```text
+nxdk       29638d0b001f179b73c3513489af10ddc2986216
+DarkPlaces 7349e20fba3c2b469616505907109863e8cb4a9e
+pbGL       017ab17c4530bf3e2ad446a50de9b18ea6011548
+libogg     e1774cd77f471443541596e09078e78fdc342e4f
+libvorbis  0657aee69dec8508a0011f47f3b69d7538e9d262
+```
+
+Nexuiz content:
+
+```text
+file:   nexuiz-252.zip
+SHA256: a5e27ebcc9775c4a490d0d3536c32e4a8f8f96b038c0b6a78d1823c37a962000
+MD5:    d750bc328e58df8492f8d88bdcf818cb
+size:   931253731 bytes
+```
+
+The archive is **not committed to this repository**. `make content` retrieves the historical release from the official SourceForge project page into ignored local `deps/`, or you can provide an existing archive with `NEXUIZ_ARCHIVE=/absolute/path/nexuiz-252.zip`. Either path is hash-verified before extraction.
+
+## Host prerequisites
+
+A Debian/Ubuntu-style build host should have at least:
+
+```sh
+sudo apt-get install build-essential clang llvm lld cmake flex bison pkgconf git python3 curl
+```
+
+nxdk's own documented host requirements still apply. Do not use proprietary Microsoft XDK tools or headers.
+
+## Clean-checkout flow
+
+### 1. Acquire immutable inputs
+
+This is the only phase that intentionally uses the network:
+
+```sh
+make -C xbox/release bootstrap
+```
+
+It creates ignored checkouts under `deps/`, checks out the exact commits from `release-inputs.json`, initializes nxdk submodules, downloads the official game archive to a temporary file, verifies its SHA-256, and only then renames it into place.
+
+If you already have the archive:
+
+```sh
+make -C xbox/release deps
+make -C xbox/release preflight NEXUIZ_ARCHIVE=/absolute/path/nexuiz-252.zip
+```
+
+### 2. Build the complete candidate
+
+After inputs exist, the complete build is offline:
+
+```sh
+make -C xbox/release all
+```
+
+Or run gates independently:
+
+```sh
+make -C xbox/release preflight
+make -C xbox/release stage
+make -C xbox/release engine
+make -C xbox/release package
+```
+
+`engine` and `package` never download dependencies or game content.
+
+## Intended outputs
+
+A successful package gate must leave:
+
+```text
+xbox/release/out/
+  nexuiz-xbox.xbe
+  nexuiz-xbox.iso
+  BUILD-IDENTITY.txt
+  CONTENT-IDENTITY.json
+  SHA256SUMS
+```
+
+The XISO is staged from the **complete Nexuiz 2.5.2 `data/` tree**, not a benchmark-only subset. The stager adds `xbox-defaults.cfg` and appends `exec xbox-defaults.cfg` to an existing `autoexec.cfg` instead of replacing the game's original startup configuration.
+
+The Xbox defaults preserve:
+
+- controller movement/look and combat bindings;
+- automatic quality **OFF**;
+- uncapped benchmark-friendly presentation settings;
+- zero-action `startdemos` startup.
+
+## What this does not prove
+
+A successful host build is only the compile/link/package gate. Before describing the port as working, the produced artifacts still need explicit evidence for:
+
+```text
+XBE boot
+Host_Main / filesystem initialization
+menu and 2D presentation
+map/BSP rendering
+controller-only game setup
+zero-action autoplay and takeover
+stereo audio and music
+complete offline match + bots/campaign
+LAN host and LAN client match
+map changes / reconnect
+stock 64 MiB memory fit
+extended xemu and hardware soak
+```
+
+The first full build is expected to expose additional source/compiler/runtime issues. Fix those against this one reproducible input identity rather than creating another build route.
