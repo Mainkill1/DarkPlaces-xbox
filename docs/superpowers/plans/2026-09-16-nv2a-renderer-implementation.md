@@ -23,7 +23,7 @@
 - CPU skeletal animation is the initial supported path; do not make GPU skinning a dependency.
 - Menus, console, HUD, loading screens, gameplay actors, projectiles, pickups, and collision cues may not disappear because a cosmetic material feature is unsupported.
 - `cl_available` remains false until video, render targets, backend state, dynamic rings, default textures, mandatory programs/recipes, and 2D rendering are all initialized.
-- `DP_XBOX_CAP_RENDERER` remains a runtime-evidence capability bit. Source readiness is represented by `DP_XBOX_NATIVE_RENDERER`; do not flip the capability bit merely because source was written.
+- `DP_XBOX_CAP_RENDERER` remains a runtime-evidence capability bit. `DP_XBOX_NATIVE_RENDERER` is a mode-specific compiler definition emitted only when `XBOX_RENDERER=native`; do not put it unconditionally in `profile.h` or flip the capability bit merely because source was written.
 - No test result, build result, xemu result, or hardware result is implied by committing source. Each verification gate is separate.
 
 ---
@@ -33,7 +33,7 @@
 | File | Single responsibility |
 |---|---|
 | `vid.h` | Add the public `RENDERPATH_XBOX` identity. |
-| `xbox/game/profile.h` | Select native-renderer source policy without claiming runtime evidence. |
+| `xbox/game/profile.h` | Keep platform/memory policy and the runtime-evidence capability bit; renderer selection stays in the Makefile. |
 | `xbox/game/sources.mk` | Select exactly one Xbox video backend and the native renderer modules. |
 | `xbox/game/Makefile` | Generate/link NV2A shader includes and reject conflicting renderer selections. |
 | `vid_xbox.c` | Video mode, client availability, controller/events, renderer lifecycle, and presentation. |
@@ -72,7 +72,7 @@
 - Create: `tests/test_xbox_renderer_contract.py`
 
 **Interfaces:**
-- Produces: `RENDERPATH_XBOX`, `DP_XBOX_NATIVE_RENDERER`, `r_xbox_stats_t`, `R_Xbox_StatsBeginFrame()`, `R_Xbox_GetStats()`, and source groups `DP_XBOX_BOOTSTRAP_VIDEO_SRCS` / `DP_XBOX_NATIVE_RENDER_SRCS`.
+- Produces: `RENDERPATH_XBOX`, mode-specific `DP_XBOX_NATIVE_RENDERER`, `r_xbox_stats_t`, `R_Xbox_StatsBeginFrame()`, `R_Xbox_GetStats()`, and source groups `DP_XBOX_BOOTSTRAP_VIDEO_SRCS` / `DP_XBOX_NATIVE_RENDER_SRCS`.
 - Consumes: existing `renderpath_t`, `xbox/game` profile, and explicit source manifest.
 
 - [ ] **Step 1: Write the failing source-contract test**
@@ -89,14 +89,15 @@ class XboxRendererContractTests(unittest.TestCase):
     def test_renderpath_and_native_profile_exist(self):
         vid = (ROOT / "vid.h").read_text(encoding="utf-8")
         profile = (ROOT / "xbox/game/profile.h").read_text(encoding="utf-8")
+        makefile = (ROOT / "xbox/game/Makefile").read_text(encoding="utf-8")
         self.assertIn("RENDERPATH_XBOX", vid)
-        self.assertIn("#define DP_XBOX_NATIVE_RENDERER 1", profile)
+        self.assertIn("-DDP_XBOX_NATIVE_RENDERER=1", makefile)
         self.assertIn("#define DP_XBOX_CAP_RENDERER 0", profile)
 
     def test_native_and_bootstrap_backends_are_mutually_exclusive(self):
         makefile = (ROOT / "xbox/game/Makefile").read_text(encoding="utf-8")
         sources = (ROOT / "xbox/game/sources.mk").read_text(encoding="utf-8")
-        self.assertIn("XBOX_RENDERER ?= native", makefile)
+        self.assertIn("XBOX_RENDERER ?= bootstrap", makefile)
         self.assertIn("DP_XBOX_BOOTSTRAP_VIDEO_SRCS", sources)
         self.assertIn("DP_XBOX_NATIVE_RENDER_SRCS", sources)
         self.assertRegex(makefile, re.compile(r"XBOX_RENDERER.*bootstrap.*native", re.S))
@@ -122,7 +123,7 @@ Run:
 python3 -m unittest tests.test_xbox_renderer_contract -v
 ```
 
-Expected: failures for missing `RENDERPATH_XBOX`, `DP_XBOX_NATIVE_RENDERER`, and native source groups.
+Expected: failures for missing `RENDERPATH_XBOX`, the mode-specific native compiler definition, and native source groups.
 
 - [ ] **Step 3: Add public identity and private stats types**
 
@@ -138,12 +139,13 @@ typedef enum renderpath_e
 renderpath_t;
 ```
 
-Add to `xbox/game/profile.h`:
+Keep this existing runtime-evidence line in `xbox/game/profile.h` unchanged:
 
 ```c
-#define DP_XBOX_NATIVE_RENDERER 1
 #define DP_XBOX_CAP_RENDERER 0
 ```
+
+Do not define `DP_XBOX_NATIVE_RENDERER` unconditionally in the profile. Task 1 adds it to `GAME_FLAGS` only for native-mode objects.
 
 Create `r_xbox_stats.h` with exactly the counters from the approved spec and these APIs:
 
@@ -190,16 +192,18 @@ DP_XBOX_NATIVE_RENDER_SRCS := \
     r_xbox_world.c r_xbox_models.c
 ```
 
-Retain high-level `gl_draw.c`, `gl_rmain.c`, and `gl_rsurf.c` in a renamed `DP_XBOX_HIGHLEVEL_RENDER_SRCS`; remove `gl_backend.c` and `gl_textures.c` from native ownership. Keep bootstrap selection available until Task 11.
+Retain high-level `gl_draw.c`, `gl_rmain.c`, and `gl_rsurf.c` in a renamed `DP_XBOX_HIGHLEVEL_RENDER_SRCS`; remove `gl_backend.c` and `gl_textures.c` from native ownership. Keep bootstrap as the default selection until Task 12.
 
 In `xbox/game/Makefile` accept exactly:
 
 ```make
-XBOX_RENDERER ?= native
+XBOX_RENDERER ?= bootstrap
 ifeq ($(XBOX_RENDERER),native)
-GAME_RENDER_SOURCES := $(DP_XBOX_NATIVE_RENDER_SRCS)
+GAME_RENDER_SOURCES := $(DP_XBOX_NATIVE_RENDER_SRCS) $(DP_XBOX_HIGHLEVEL_RENDER_SRCS)
+GAME_FLAGS += -DDP_XBOX_NATIVE_RENDERER=1
 else ifeq ($(XBOX_RENDERER),bootstrap)
 GAME_RENDER_SOURCES := $(DP_XBOX_BOOTSTRAP_VIDEO_SRCS) $(DP_XBOX_DORMANT_RENDER_SRCS)
+GAME_FLAGS += -DDP_XBOX_RENDERER_BOOTSTRAP=1
 else
 $(error XBOX_RENDERER must be native or bootstrap)
 endif
@@ -212,7 +216,7 @@ endif
 - native mode contains `vid_xbox_bootstrap.c`, `gl_backend.c`, or `gl_textures.c`;
 - native mode omits any module named in `DP_XBOX_NATIVE_RENDER_SRCS`;
 - bootstrap and native video backends appear in the same resolved list;
-- `RENDERPATH_XBOX` or `DP_XBOX_NATIVE_RENDERER` is absent;
+- `RENDERPATH_XBOX` is absent or native mode does not emit `-DDP_XBOX_NATIVE_RENDERER=1`;
 - foundation/inputcheck makefiles reference production renderer sources.
 
 - [ ] **Step 6: Run contract and audit**
@@ -1252,5 +1256,5 @@ git commit -m "ci: validate the native Xbox renderer gates"
 - **Spec coverage:** Tasks 1–12 cover render-path identity, video/present, state, buffers, textures, fixed programs, material classification, 2D, BSP/world, models/effects, advanced approximations, diagnostics, memory ceilings, failure policy, and source cutover. Task 13 covers the deliberately deferred evidence gates.
 - **No competing renderer:** Native mode excludes `gl_backend.c`, `gl_textures.c`, and bootstrap video while retaining high-level traversal modules with explicit Xbox material branches.
 - **Type consistency:** Lifecycle, stats, ring, program, combiner, material-plan, quality-tier, world, model, and 2D interfaces are defined before later tasks consume them.
-- **Capability honesty:** Source selection and runtime evidence remain separate; `DP_XBOX_CAP_RENDERER` stays false until runtime gates pass.
+- **Capability honesty:** Bootstrap remains the default during Tasks 1–11; Task 12 changes the production default to native. The native compiler definition is mode-specific, and `DP_XBOX_CAP_RENDERER` stays false until runtime gates pass.
 - **Subsystem isolation:** Audio, LAN sessions, and content licensing remain outside this plan.
