@@ -8,7 +8,11 @@ Option B is approved: deliver a fully playable offline game plus LAN host/join, 
 
 ## Current reality
 
-PRs #31–#34 are merged. The user has shown the diagnostic boot in xemu; the native full-game engine is not yet implemented. This fork is based on modern DarkPlaces. Its renderer supports OpenGL 3.2 and GLES2, while nxdk provides native NV2A graphics facilities rather than a compatible implementation of those DarkPlaces render paths. The port therefore needs an explicit `RENDERPATH_XBOX`, a reduced feature policy, and careful 64 MB asset management.
+PRs #31–#34 are merged. The user has shown the diagnostic foundation boot in xemu; that remains a diagnostic rather than game evidence.
+
+The repository now has an integrated first game-build candidate under `xbox/classic/`, using a Nexuiz-era DarkPlaces revision and pbGL/PBKit/NV2A, plus initial Xbox controller/video/audio/network platform code. `xbox/release/` is the canonical dependency/content/build/package wrapper for that candidate. Its external inputs are exact-commit/hash locked and the complete Nexuiz 2.5.2 archive is staged from a durable verified source instead of expiring CI artifacts.
+
+The modern `xbox/game/` direct `RENDERPATH_XBOX` backend remains in development and is not the first full integration target. The integrated candidate has not yet passed the full cross-build/runtime ladder, so source presence is not a claim that rendering, audio, gameplay, LAN or 64 MiB acceptance already works. The next major evidence gate is the first locked full build, followed by xemu bring-up.
 
 The live implementation queue is the [master port epic](https://github.com/Mainkill1/DarkPlaces-xbox/issues/1) and its linked issues #2–#30 plus #35 (offline gameplay) and #36 (LAN). Wiki pages describe the durable design; issues own execution status and evidence.
 
@@ -32,7 +36,6 @@ The live implementation queue is the [master port epic](https://github.com/Maink
 - [Issue map](Issue-Map)
 - [Contribution workflow](Contribution-Workflow)
 - [Licensing and content](Licensing-and-Content)
-
 - [Controller graphics settings](Controller-Graphics-Settings)
 
 ## Publishing
