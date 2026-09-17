@@ -19,11 +19,12 @@ class ClassicBuildContractTests(unittest.TestCase):
         self.assertNotIn("$(VORBIS_DIR)/lib/vorbisenc.c", self.make)
 
     def test_xbox_uses_disc_basedir_and_separate_writable_userdir(self):
-        self.assertIn('static char arg3[] = "D:/";', self.sys)
+        self.assertIn('#define XBOX_BASEDIR "D:/"', self.sys)
+        self.assertIn('#define XBOX_USERDIR "E:/UDATA/Nexuiz"', self.sys)
+        self.assertIn('static char arg3[] = XBOX_BASEDIR;', self.sys)
         self.assertIn('static char arg4[] = "-userdir";', self.sys)
-        self.assertIn('static char arg5[] = "E:/UDATA/Nexuiz";', self.sys)
+        self.assertIn('static char arg5[] = XBOX_USERDIR;', self.sys)
         self.assertIn("com_argc = 13;", self.sys)
-        self.assertIn("XBOX_USERDIR", self.sys)
 
     def test_xbox_startup_reports_both_storage_roots(self):
         self.assertIn("basedir=D:/", self.sys)
