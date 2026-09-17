@@ -59,6 +59,33 @@ class XboxRendererContractTests(unittest.TestCase):
         ):
             self.assertNotIn(prohibited, native)
 
+    def test_native_video_owns_pbkit_lifecycle_and_client_capability(self) -> None:
+        source = self.read("vid_xbox.c")
+        backend = self.read("r_xbox_backend.c")
+        system = self.read("sys_xbox.c")
+
+        for token in (
+            "XVideoSetMode",
+            "pb_init",
+            "pb_kill",
+            "R_Xbox_Init",
+            "R_Xbox_Shutdown",
+            "RENDERPATH_XBOX",
+            "int cl_available = true",
+            "xbox_video.runtime_ready = true",
+        ):
+            self.assertIn(token, source)
+        for token in (
+            "pb_reset",
+            "pb_target_back_buffer",
+            "pb_finished",
+            "pb_wait_for_vbl",
+            "R_Xbox_StatsBeginFrame",
+        ):
+            self.assertIn(token, backend)
+        self.assertNotIn("XVideoSetMode", system)
+        self.assertNotIn("debugClearScreen", system)
+
     def test_diagnostics_do_not_link_the_production_renderer(self) -> None:
         for relative in ("xbox/Makefile", "xbox/inputcheck/Makefile"):
             text = self.read(relative)
