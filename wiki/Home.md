@@ -19,6 +19,7 @@ The live implementation queue is the [master port epic](https://github.com/Maink
 - [Port goals and scope](Port-Goals-and-Scope)
 - [Port design](Original-Xbox-Port-Design)
 - [Architecture](Architecture)
+- [Xbox audio architecture](Xbox-Audio-Architecture)
 - [Build and toolchain](Build-and-Toolchain)
 - [Renderer strategy](Renderer-Strategy)
 - [Feature support matrix](Feature-Support-Matrix)
@@ -32,7 +33,6 @@ The live implementation queue is the [master port epic](https://github.com/Maink
 - [Issue map](Issue-Map)
 - [Contribution workflow](Contribution-Workflow)
 - [Licensing and content](Licensing-and-Content)
-
 - [Controller graphics settings](Controller-Graphics-Settings)
 
 ## Publishing
