@@ -16,6 +16,9 @@
 
 #include "quakedef.h"
 
+#define XBOX_BASEDIR "D:/"
+#define XBOX_USERDIR "E:/UDATA/Nexuiz"
+
 static volatile LONG xbox_net_state;
 static HANDLE xbox_net_thread;
 
@@ -217,23 +220,30 @@ int main(int argc, char **argv)
 	static char arg0[] = "nexuiz-xbox";
 	static char arg1[] = "-nexuiz";
 	static char arg2[] = "-basedir";
-	static char arg3[] = "D:\\";
-	static char arg4[] = "-fullscreen";
-	static char arg5[] = "-width";
-	static char arg6[] = "640";
-	static char arg7[] = "-height";
-	static char arg8[] = "480";
-	static char arg9[] = "-bpp";
-	static char arg10[] = "32";
-	static char *xargv[] = {arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,NULL};
+	static char arg3[] = XBOX_BASEDIR;
+	static char arg4[] = "-userdir";
+	static char arg5[] = XBOX_USERDIR;
+	static char arg6[] = "-fullscreen";
+	static char arg7[] = "-width";
+	static char arg8[] = "640";
+	static char arg9[] = "-height";
+	static char arg10[] = "480";
+	static char arg11[] = "-bpp";
+	static char arg12[] = "32";
+	static char *xargv[] = {arg0,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9,arg10,arg11,arg12,NULL};
 	(void)argc;
 	(void)argv;
 
 	XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
 	debugClearScreen();
 	debugPrint("Nexuiz Xbox: starting DarkPlaces...\n");
+	debugPrint("Nexuiz Xbox: basedir=D:/ userdir=E:/UDATA/Nexuiz\n");
 
-	com_argc = 11;
+	/* The disc root is read-only game content. DarkPlaces' existing -userdir
+	 * support adds userdir/data after basedir/data, so saved config, demos,
+	 * screenshots and progression writes land on E: while packaged PK3s remain
+	 * readable from D:. FS_CreatePath creates the writable hierarchy lazily. */
+	com_argc = 13;
 	com_argv = (const char **)xargv;
 	SDL_Init(0);
 	Xbox_StartNetworkAsync();
