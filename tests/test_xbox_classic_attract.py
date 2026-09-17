@@ -4,6 +4,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 VID = ROOT / "xbox" / "classic" / "vid_xbox.c"
 MAKE = ROOT / "xbox" / "classic" / "Makefile"
+STAGER = ROOT / "tools" / "xbox" / "stage_classic_release.py"
 
 
 class ClassicAttractTests(unittest.TestCase):
@@ -11,6 +12,7 @@ class ClassicAttractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.vid = VID.read_text(encoding="utf-8")
         cls.make = MAKE.read_text(encoding="utf-8")
+        cls.stager = STAGER.read_text(encoding="utf-8")
 
     def test_reuses_tested_button_gate_policy(self):
         self.assertIn("../attract_policy.h", self.vid)
@@ -36,6 +38,16 @@ class ClassicAttractTests(unittest.TestCase):
         self.assertNotIn("LEFTY", body)
         self.assertNotIn("RIGHTX", body)
         self.assertNotIn("RIGHTY", body)
+
+    def test_start_restarts_only_a_manually_stopped_attract_session(self):
+        self.assertIn("attract_manual_stop", self.vid)
+        self.assertIn('Cbuf_AddText("xbox_demo_start\\n")', self.vid)
+        self.assertIn("XBOX_ATTRACT_RESTART", self.vid)
+
+    def test_staged_defaults_define_single_reusable_playlist_alias(self):
+        self.assertIn('alias xbox_demo_start', self.stager)
+        self.assertIn("xbox_demo_start", self.stager)
+        self.assertNotIn("\nstartdemos demos/bench1", self.stager)
 
 
 if __name__ == "__main__":
