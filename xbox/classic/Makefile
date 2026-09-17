@@ -47,8 +47,20 @@ ENGINE_COMMON := \
 ENGINE_SOUND := snd_main.c snd_mem.c snd_mix.c snd_ogg.c snd_wav.c snd_modplug.c
 ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c)
 
-OGG_SRCS := $(wildcard $(OGG_DIR)/src/*.c)
-VORBIS_SRCS := $(wildcard $(VORBIS_DIR)/lib/*.c)
+# Do not wildcard third-party codec directories. The release lock pins exact
+# source revisions and the Xbox executable carries only the library translation
+# units needed by libvorbisfile. In particular, vorbisenc.c and utility/test
+# sources are not part of the game executable.
+OGG_SRCS := \
+	$(OGG_DIR)/src/bitwise.c \
+	$(OGG_DIR)/src/framing.c
+
+VORBIS_CORE_NAMES := \
+	mdct.c smallft.c block.c envelope.c window.c lsp.c lpc.c analysis.c \
+	synthesis.c psy.c info.c floor1.c floor0.c res0.c mapping0.c registry.c \
+	codebook.c sharedbook.c lookup.c bitrate.c
+VORBIS_SRCS := $(addprefix $(VORBIS_DIR)/lib/,$(VORBIS_CORE_NAMES)) \
+	$(VORBIS_DIR)/lib/vorbisfile.c
 
 PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/sys_xbox.c \
