@@ -10,6 +10,7 @@ on:
       - '.github/workflows/port-repository-checks.yml'
       - '.github/workflows/publish-wiki.yml'
       - '.github/workflows/xbox-foundation.yml'
+      - '.github/workflows/xbox-playable.yml'
       - 'tools/publish_wiki.sh'
       - 'tools/xbox/**'
       - 'tests/**'
@@ -26,6 +27,7 @@ on:
       - '.github/workflows/port-repository-checks.yml'
       - '.github/workflows/publish-wiki.yml'
       - '.github/workflows/xbox-foundation.yml'
+      - '.github/workflows/xbox-playable.yml'
       - 'tools/publish_wiki.sh'
       - 'tools/xbox/**'
       - 'tests/**'
@@ -92,9 +94,10 @@ jobs:
               raise SystemExit("Missing wiki pages:\n" + "\n".join(missing))
 
           issue_map = (wiki / "Issue-Map.md").read_text(encoding="utf-8")
+          issue_numbers = [*range(1, 31), 35, 36]
           expected = {
               f"https://github.com/Mainkill1/DarkPlaces-xbox/issues/{number}"
-              for number in range(1, 31)
+              for number in issue_numbers
           }
           absent = sorted(url for url in expected if url not in issue_map)
           if absent:
@@ -103,8 +106,8 @@ jobs:
                   + "\n".join(absent)
               )
 
-          print(f"validated {len(pages)} wiki pages and issues #1-#30")
+          print(f"validated {len(pages)} wiki pages and live issue map")
           PY
 
-      - name: Run Original Xbox foundation tests
+      - name: Run Original Xbox repository tests
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
