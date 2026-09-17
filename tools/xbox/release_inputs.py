@@ -98,15 +98,21 @@ def load_lock(path: Path) -> dict[str, Any]:
     return lock
 
 
-def file_sha256(path: Path) -> str:
-    result = hashlib.sha256()
+def file_hashes(path: Path) -> tuple[str, str]:
+    sha256 = hashlib.sha256()
+    md5 = hashlib.md5()
     try:
         with path.open("rb") as stream:
             while block := stream.read(CHUNK):
-                result.update(block)
+                sha256.update(block)
+                md5.update(block)
     except OSError as exc:
         raise ReleaseInputError(f"cannot read {path}: {exc}") from exc
-    return result.hexdigest()
+    return sha256.hexdigest(), md5.hexdigest()
+
+
+def file_sha256(path: Path) -> str:
+    return file_hashes(path)[0]
 
 
 def verify_file(path: Path, expected_sha256: str) -> None:
@@ -118,6 +124,24 @@ def verify_file(path: Path, expected_sha256: str) -> None:
     if actual != expected_sha256:
         raise ReleaseInputError(
             f"SHA-256 mismatch for {path}: expected {expected_sha256}, got {actual}"
+        )
+
+
+def verify_content(path: Path, expected_sha256: str, expected_md5: str) -> None:
+    if not HEX64.fullmatch(expected_sha256):
+        raise ReleaseInputError("expected SHA-256 is malformed")
+    if not HEX32.fullmatch(expected_md5):
+        raise ReleaseInputError("expected MD5 is malformed")
+    if not path.is_file():
+        raise ReleaseInputError(f"required file does not exist: {path}")
+    actual_sha256, actual_md5 = file_hashes(path)
+    if actual_sha256 != expected_sha256:
+        raise ReleaseInputError(
+            f"SHA-256 mismatch for {path}: expected {expected_sha256}, got {actual_sha256}"
+        )
+    if actual_md5 != expected_md5:
+        raise ReleaseInputError(
+            f"MD5 mismatch for {path}: expected {expected_md5}, got {actual_md5}"
         )
 
 
@@ -187,7 +211,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         lock = load_lock(args.lock)
         if args.command == "verify-archive":
-            verify_file(args.archive, lock["content"]["sha256"])
+            verify_content(
+                args.archive,
+                lock["content"]["sha256"],
+                lock["content"]["md5"],
+            )
         elif args.command == "verify-checkouts":
             verify_checkouts(lock, args.root.resolve())
     except ReleaseInputError as exc:
