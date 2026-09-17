@@ -36,7 +36,9 @@ typedef enum renderpath_e
 {
 	RENDERPATH_GL32,
 	RENDERPATH_GLES2,
+#ifdef DP_PLATFORM_XBOX
 	RENDERPATH_XBOX
+#endif
 }
 renderpath_t;
 
