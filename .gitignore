@@ -69,3 +69,9 @@ wasm/preload/*
 /xbox/game/build/
 /xbox/game/main.exe.manifest
 /xbox/game/main.map
+
+# Canonical release-candidate dependencies and generated outputs. External source
+# repositories and the ~931 MB Nexuiz archive are verified locally, never committed.
+/deps/
+/xbox/classic/build/
+/xbox/release/out/
