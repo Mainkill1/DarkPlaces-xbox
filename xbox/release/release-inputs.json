@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "release": "nexuiz-xbox-2.5.2",
+  "repositories": {
+    "nxdk": {
+      "repository": "XboxDev/nxdk",
+      "commit": "29638d0b001f179b73c3513489af10ddc2986216",
+      "path": "deps/nxdk"
+    },
+    "darkplaces": {
+      "repository": "DarkPlacesEngine/DarkPlaces",
+      "commit": "7349e20fba3c2b469616505907109863e8cb4a9e",
+      "path": "deps/darkplaces-classic"
+    },
+    "pbgl": {
+      "repository": "fgsfdsfgs/pbgl",
+      "commit": "017ab17c4530bf3e2ad446a50de9b18ea6011548",
+      "path": "deps/pbgl"
+    },
+    "ogg": {
+      "repository": "xiph/ogg",
+      "commit": "e1774cd77f471443541596e09078e78fdc342e4f",
+      "path": "deps/ogg"
+    },
+    "vorbis": {
+      "repository": "xiph/vorbis",
+      "commit": "0657aee69dec8508a0011f47f3b69d7538e9d262",
+      "path": "deps/vorbis"
+    }
+  },
+  "content": {
+    "filename": "nexuiz-252.zip",
+    "url": "https://sourceforge.net/projects/nexuiz/files/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip/download",
+    "sha256": "a5e27ebcc9775c4a490d0d3536c32e4a8f8f96b038c0b6a78d1823c37a962000",
+    "md5": "d750bc328e58df8492f8d88bdcf818cb"
+  }
+}
