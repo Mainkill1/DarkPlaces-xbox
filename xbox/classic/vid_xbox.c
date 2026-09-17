@@ -40,6 +40,7 @@ static unsigned char oldbuttons[16];
 static qboolean pbgl_started;
 static dp_button_gate_t attract_button_gate;
 static qboolean attract_consume_until_release;
+static qboolean attract_manual_stop;
 
 static double Xbox_Axis(SDL_GameControllerAxis axis, double sensitivity, double deadzone)
 {
@@ -122,7 +123,29 @@ static void Xbox_AttractTakeover(void)
 		CL_Disconnect();
 	if (key_dest != key_menu && key_dest != key_menu_grabbed)
 		MR_ToggleMenu_f();
+	attract_manual_stop = true;
 	Con_Print("XBOX_ATTRACT_TAKEOVER\n");
+}
+
+static qboolean Xbox_AttractRestartRequested(uint32_t pressed)
+{
+	return attract_manual_stop
+		&& (pressed & (1u << 12))
+		&& key_dest == key_menu
+		&& cls.state == ca_disconnected
+		&& !sv.active;
+}
+
+static void Xbox_AttractRestart(void)
+{
+	/* xbox_demo_start is generated into xbox-defaults.cfg and is the same
+	 * playlist command used for the initial zero-input startup. */
+	attract_manual_stop = false;
+	Cbuf_AddText("xbox_demo_start\n");
+	MR_ToggleMenu_f();
+	attract_consume_until_release = true;
+	memset(oldbuttons, 0, sizeof(oldbuttons));
+	Con_Print("XBOX_ATTRACT_RESTART\n");
 }
 
 static void Xbox_KeyEdge(int slot, qboolean down, int gamekey, int menukey)
@@ -164,6 +187,11 @@ void Sys_SendKeyEvents(void)
 	instance = joystick ? (int32_t)SDL_JoystickInstanceID(joystick) : -1;
 	pressed = DP_ButtonGate_Update(&attract_button_gate, true, instance, buttonmask);
 
+	/* Once the user actually enters a local or remote game, Start must return
+	 * to normal game/menu semantics rather than retaining an old attract stop. */
+	if (attract_manual_stop && (cls.state != ca_disconnected || sv.active))
+		attract_manual_stop = false;
+
 	/* A takeover press is consumed completely. Releases cannot leak into the
 	 * menu, and a button already held at startup/reconnect never counts as a
 	 * fresh takeover action. Analog stick drift is not part of buttonmask. */
@@ -181,6 +209,11 @@ void Sys_SendKeyEvents(void)
 		Xbox_AttractTakeover();
 		attract_consume_until_release = true;
 		memset(oldbuttons, 0, sizeof(oldbuttons));
+		return;
+	}
+	if (Xbox_AttractRestartRequested(pressed))
+	{
+		Xbox_AttractRestart();
 		return;
 	}
 
@@ -242,6 +275,7 @@ void VID_Init(void)
 	Cvar_RegisterVariable(&joy_sensitivityyaw);
 	DP_ButtonGate_Reset(&attract_button_gate);
 	attract_consume_until_release = false;
+	attract_manual_stop = false;
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
 		Con_Printf("SDL controller init failed: %s\n", SDL_GetError());
 	Xbox_OpenController();
@@ -280,6 +314,7 @@ void VID_Shutdown(void)
 	}
 	DP_ButtonGate_Reset(&attract_button_gate);
 	attract_consume_until_release = false;
+	attract_manual_stop = false;
 	if (pbgl_started)
 	{
 		pbgl_shutdown();
