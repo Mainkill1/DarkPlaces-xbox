@@ -1,8 +1,9 @@
 # Canonical first end-to-end build entry for the playable Nexuiz Xbox port.
 #
 # Network access is explicit: `make bootstrap` clones pinned source dependencies
-# and downloads the official Nexuiz archive. `preflight`, `stage`, `engine`, and
-# `package` never download anything and fail if their inputs are not present.
+# and downloads the official Nexuiz archive. Every later gate is offline. The
+# release wrapper owns XISO creation so changed staged content can never reuse a
+# stale image simply because default.xbe did not change.
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +29,7 @@ XBE := $(DISC_DIR)/default.xbe
 XISO := $(CLASSIC_DIR)/nexuiz-xbox.iso
 BUILD_IDENTITY := $(DISC_DIR)/BUILD-IDENTITY.txt
 CONTENT_IDENTITY := $(DISC_DIR)/CONTENT-IDENTITY.json
+EXTRACT_XISO := $(NXDK_DIR)/tools/extract-xiso/build/extract-xiso
 
 COMMON_VARS := \
 	NXDK_DIR="$(NXDK_DIR)" \
@@ -36,7 +38,7 @@ COMMON_VARS := \
 	OGG_DIR="$(OGG_DIR)" \
 	VORBIS_DIR="$(VORBIS_DIR)"
 
-.PHONY: help bootstrap deps content preflight stage identity engine package all clean clean-output
+.PHONY: help bootstrap deps content preflight stage identity engine xbe verify-tree xiso verify-xiso package all clean clean-output
 
 help:
 	@printf '%s\n' \
@@ -51,8 +53,12 @@ help:
 	  '  make -C xbox/release preflight     verify every dependency checkout and archive identity' \
 	  '  make -C xbox/release stage         stage complete data tree + Xbox defaults' \
 	  '  make -C xbox/release engine        compile/link main.exe only' \
-	  '  make -C xbox/release package       produce XBE/XISO and release output directory' \
-	  '  make -C xbox/release all           preflight + stage + engine + package (no network)' \
+	  '  make -C xbox/release xbe           generate default.xbe from the linked engine' \
+	  '  make -C xbox/release verify-tree   reconcile staged data, identities and XBE before packaging' \
+	  '  make -C xbox/release xiso          force-create a fresh XDVDFS image from the staged tree' \
+	  '  make -C xbox/release verify-xiso   parse/hash the XDVDFS image against the staged tree' \
+	  '  make -C xbox/release package       publish XBE/XISO + identities + SHA256SUMS' \
+	  '  make -C xbox/release all           complete offline release-candidate pipeline' \
 	  '' \
 	  'Supply NEXUIZ_ARCHIVE=/path/nexuiz-252.zip to use an existing verified archive.'
 
@@ -141,11 +147,33 @@ engine: preflight
 	@echo "[ ENGINE   ] Nexuiz-era DarkPlaces + Xbox platform backend"
 	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 main.exe $(COMMON_VARS)
 
-package: preflight stage identity engine
-	@echo "[ PACKAGE  ] XBE and XISO"
-	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 all $(COMMON_VARS)
-	@test -f "$(XBE)" || { echo "Missing XBE: $(XBE)" >&2; exit 2; }
-	@test -f "$(XISO)" || { echo "Missing XISO: $(XISO)" >&2; exit 2; }
+# Build only the executable container here. The generic nxdk `all` target also
+# owns GEN_XISO and only tracks default.xbe as an XISO prerequisite, which is not
+# sufficient for a staged game-data tree that may change independently.
+xbe: stage identity engine
+	@echo "[ XBE      ] $(XBE)"
+	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 "$(XBE)" $(COMMON_VARS)
+	@test -s "$(XBE)" || { echo "Missing/empty XBE: $(XBE)" >&2; exit 2; }
+
+verify-tree: xbe identity
+	@echo "[ VERIFY   ] staged release tree"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/verify_release_tree.py" "$(DISC_DIR)"
+
+# Always remove and recreate the XISO after staging. This intentionally avoids
+# timestamp-only dependency inference for the hundreds of staged game files.
+xiso: verify-tree
+	@echo "[ XISO     ] fresh XDVDFS image"
+	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 extract-xiso $(COMMON_VARS)
+	@rm -f "$(XISO)"
+	@$(EXTRACT_XISO) -c "$(DISC_DIR)" "$(XISO)"
+	@test -s "$(XISO)" || { echo "Missing/empty XISO: $(XISO)" >&2; exit 2; }
+
+verify-xiso: xiso
+	@echo "[ VERIFY   ] packaged XDVDFS image"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/verify_xiso.py" "$(XISO)" "$(DISC_DIR)"
+
+package: verify-xiso
+	@echo "[ PACKAGE  ] publish verified XBE/XISO"
 	@rm -rf "$(OUT_DIR)"
 	@mkdir -p "$(OUT_DIR)"
 	@cp "$(XBE)" "$(OUT_DIR)/nexuiz-xbox.xbe"
@@ -155,7 +183,7 @@ package: preflight stage identity engine
 	@cd "$(OUT_DIR)" && sha256sum nexuiz-xbox.xbe nexuiz-xbox.iso BUILD-IDENTITY.txt CONTENT-IDENTITY.json > SHA256SUMS
 	@echo "[ READY    ] $(OUT_DIR)"
 
-all: preflight stage engine package
+all: package
 
 clean-output:
 	@rm -rf "$(OUT_DIR)"
