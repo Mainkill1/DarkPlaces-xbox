@@ -49,6 +49,27 @@ class ClassicAttractTests(unittest.TestCase):
         self.assertIn("xbox_demo_start", self.stager)
         self.assertNotIn("\nstartdemos demos/bench1", self.stager)
 
+    def test_classic_bindings_match_approved_original_xbox_semantics(self):
+        expected = (
+            "bind JOY1 +jump",
+            "bind JOY2 +crouch",
+            "bind JOY3 dropweapon",
+            "bind JOY4 weaplast",
+            "bind JOY5 weapprev",
+            "bind JOY6 weapnext",
+            "bind JOY7 +hook",
+            "bind JOY8 +zoom",
+            "bind AUX1 +attack2",
+            "bind AUX2 +attack",
+            "bind AUX3 +showscores",
+            "bind AUX4 +show_info",
+            "bind AUX5 weapprev",
+            "bind AUX6 weapnext",
+        )
+        for binding in expected:
+            self.assertIn(binding, self.stager)
+        self.assertNotIn("bind JOY4 _weapprev", self.stager)
+
 
 if __name__ == "__main__":
     unittest.main()
