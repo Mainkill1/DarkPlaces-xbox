@@ -26,6 +26,12 @@ These are planning caps, not measured truth. The allocator telemetry issue must 
 
 The categories share physical memory; the table is a control mechanism for content and cache decisions, not a claim that each subsystem receives a separate heap.
 
+## Audio control budget
+
+The [Xbox audio architecture](Xbox-Audio-Architecture) assigns the historical 3 MiB audio category an explicit initial runtime-data ceiling. It includes the engine/output rings, stream read-ahead and PCM windows, codec heap, decoded-SFX cache, metadata and transition reserve. It does not permit a complete compressed music track to remain resident merely because decoding is incremental.
+
+The 3 MiB ceiling is provisional until issue #13 measures the executable, codec static data, offline client/listen-server profiles, LAN host/client profiles and map-transition overlap together. Audio must fail or evict according to its declared policy rather than borrowing silently from texture, world or safety reserves.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;
@@ -34,7 +40,8 @@ The categories share physical memory; the table is a control mechanism for conte
 - world/model buffer bytes;
 - frame/depth/pushbuffer sizes;
 - transient load peak;
-- audio buffers;
+- audio engine/output/hardware buffers;
+- codec current/peak allocation, decoded-SFX cache and stream windows;
 - free-memory sample where nxdk exposes it;
 - per-loop low-water/high-water comparison;
 - allocation failure context.
@@ -46,9 +53,10 @@ The categories share physical memory; the table is a control mechanism for conte
 - Cap texture dimensions by profile.
 - Avoid keeping decoded source pixels after upload.
 - Use cache eviction with deterministic accounting.
+- Stream long audio from stored package members; bound decoder and read-ahead state.
 - Split or stream stress zones when visibility alone cannot bound residency.
 - Prove that a loop returns to a stable memory watermark.
 
 ## Failure policy
 
-An allocation failure should produce a readable subsystem/size report and a controlled exit or fallback. It must not continue with partially initialized GPU state.
+An allocation failure should produce a readable subsystem/size report and a controlled exit or fallback. It must not continue with partially initialized GPU or audio state.
