@@ -17,18 +17,22 @@ The system must never treat the full physical 64 MiB as application memory. Afte
 The retail profile applies:
 
 ```text
-measured available memory after platform/video
-    - 4 MiB global emergency/safety reserve
-    - 28 MiB non-renderer reserve
-    ----------------------------------------
-    = candidate renderer allowance
+reserved outside renderer = 4 MiB emergency/safety + 28 MiB non-renderer
+
+if measured available memory <= reserved outside renderer:
+    candidate renderer allowance = 0
+else:
+    candidate renderer allowance = measured available memory - reserved outside renderer
 
 renderer allowance = min(candidate renderer allowance, 18 MiB)
+renderer mandatory minimum = 8 MiB
 ```
+
+All budget arithmetic uses checked/saturating integer operations. A subtraction can never wrap into a larger allowance.
 
 The 28 MiB non-renderer reserve protects the engine/client/listen-server, game VMs, collision/world CPU structures, later audio, network queues, loading work, stacks, and SDK/runtime allocations. It is a safety partition, not a claim that those subsystems will permanently consume exactly 28 MiB.
 
-If the candidate renderer allowance is below the renderer's mandatory minimum, native renderer initialization fails before partial content loading.
+If the computed renderer allowance is below 8 MiB, native renderer initialization fails before partial content loading. The 8 MiB floor is an initialization safety floor, not a statement that a complete Nexuiz map will fit inside 8 MiB of renderer-owned memory.
 
 `DP_XBOX_CAP_RENDERER` remains a runtime-evidence bit and is not changed by this design.
 
@@ -113,7 +117,7 @@ The report path must avoid heap allocation, dynamic formatting buffers, texture 
 
 ## Renderer Budget
 
-The renderer hard ceiling is 18 MiB under the retail profile, but actual permitted bytes may be lower based on runtime free memory.
+The renderer hard ceiling is 18 MiB under the retail profile, but actual permitted bytes may be lower based on runtime free memory. Native initialization requires at least 8 MiB of renderer allowance after the global and non-renderer reserves are preserved.
 
 The following are initial retail targets, not unconditional reservations:
 
@@ -125,6 +129,8 @@ The following are initial retail targets, not unconditional reservations:
 | Upload/decode scratch | 768 KiB |
 | Renderer metadata | 384 KiB |
 | Shared static GPU arena | Remaining renderer allowance |
+
+At the 8 MiB minimum, the fixed initial targets above consume 2.25 MiB, leaving approximately 5.75 MiB for the shared static GPU arena before small allocator bookkeeping costs. A real map can still be rejected if its resources exceed the measured allowance.
 
 The renderer may choose smaller rings when the measured allowance is low. Larger ring sizes are permitted only when an explicit higher-memory profile or measured budget allows them.
 
@@ -374,7 +380,7 @@ alignment
 arena capacity
 arena used
 arena free
-a largest-free-block value
+largest free block
 renderer allowance
 system available pages
 current map/demo identifier
@@ -402,7 +408,8 @@ select video mode
 pb_init
 query post-pbkit memory
 reserve emergency policy/headroom
-compute renderer allowance
+compute renderer allowance with checked/saturating arithmetic
+require at least 8 MiB allowance
 allocate shared GPU arena
 allocate dynamic rings
 allocate scratch arena
