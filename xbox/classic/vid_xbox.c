@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "quakedef.h"
+#include "../attract_policy.h"
 
 int cl_available = true;
 qboolean vid_supportrefreshrate = false;
@@ -37,6 +38,8 @@ cvar_t joy_sensitivityroll = {0, "joy_sensitivityroll", "1", "unused"};
 static SDL_GameController *controller;
 static unsigned char oldbuttons[16];
 static qboolean pbgl_started;
+static dp_button_gate_t attract_button_gate;
+static qboolean attract_consume_until_release;
 
 static double Xbox_Axis(SDL_GameControllerAxis axis, double sensitivity, double deadzone)
 {
@@ -51,6 +54,36 @@ static double Xbox_Axis(SDL_GameControllerAxis axis, double sensitivity, double 
 	return value * sensitivity;
 }
 
+static uint32_t Xbox_ButtonMask(qboolean *lt, qboolean *rt)
+{
+	uint32_t mask = 0;
+#define XBOX_BUTTON_BIT(slot, button) \
+	do { if (SDL_GameControllerGetButton(controller, (button))) mask |= (1u << (slot)); } while (0)
+	XBOX_BUTTON_BIT(0, SDL_CONTROLLER_BUTTON_A);
+	XBOX_BUTTON_BIT(1, SDL_CONTROLLER_BUTTON_B);
+	XBOX_BUTTON_BIT(2, SDL_CONTROLLER_BUTTON_X);
+	XBOX_BUTTON_BIT(3, SDL_CONTROLLER_BUTTON_Y);
+	/* nxdk maps Original Xbox White/Black onto the SDL shoulder slots. */
+	XBOX_BUTTON_BIT(4, SDL_CONTROLLER_BUTTON_LEFTSHOULDER);
+	XBOX_BUTTON_BIT(5, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER);
+	XBOX_BUTTON_BIT(6, SDL_CONTROLLER_BUTTON_LEFTSTICK);
+	XBOX_BUTTON_BIT(7, SDL_CONTROLLER_BUTTON_RIGHTSTICK);
+	XBOX_BUTTON_BIT(8, SDL_CONTROLLER_BUTTON_DPAD_UP);
+	XBOX_BUTTON_BIT(9, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
+	XBOX_BUTTON_BIT(10, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
+	XBOX_BUTTON_BIT(11, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+	XBOX_BUTTON_BIT(12, SDL_CONTROLLER_BUTTON_START);
+	XBOX_BUTTON_BIT(13, SDL_CONTROLLER_BUTTON_BACK);
+#undef XBOX_BUTTON_BIT
+	*lt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 8192;
+	*rt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 8192;
+	if (*lt)
+		mask |= 1u << 14;
+	if (*rt)
+		mask |= 1u << 15;
+	return mask;
+}
+
 static void Xbox_OpenController(void)
 {
 	int i;
@@ -61,6 +94,9 @@ static void Xbox_OpenController(void)
 		SDL_GameControllerClose(controller);
 		controller = NULL;
 	}
+	DP_ButtonGate_Reset(&attract_button_gate);
+	attract_consume_until_release = false;
+	memset(oldbuttons, 0, sizeof(oldbuttons));
 	for (i = 0; i < SDL_NumJoysticks(); ++i)
 	{
 		if (SDL_IsGameController(i))
@@ -71,7 +107,22 @@ static void Xbox_OpenController(void)
 		}
 	}
 	Cvar_SetValueQuick(&joy_detected, controller ? 1 : 0);
-	memset(oldbuttons, 0, sizeof(oldbuttons));
+}
+
+static qboolean Xbox_AttractActive(void)
+{
+	return cls.demoplayback || cls.demonum >= 0;
+}
+
+static void Xbox_AttractTakeover(void)
+{
+	/* Stop both the current playback and the automatic CL_NextDemo loop. */
+	cls.demonum = -1;
+	if (cls.demoplayback)
+		CL_Disconnect();
+	if (key_dest != key_menu && key_dest != key_menu_grabbed)
+		MR_ToggleMenu_f();
+	Con_Print("XBOX_ATTRACT_TAKEOVER\n");
 }
 
 static void Xbox_KeyEdge(int slot, qboolean down, int gamekey, int menukey)
@@ -89,6 +140,9 @@ static void Xbox_KeyEdge(int slot, qboolean down, int gamekey, int menukey)
 void Sys_SendKeyEvents(void)
 {
 	SDL_Event event;
+	SDL_Joystick *joystick;
+	int32_t instance;
+	uint32_t buttonmask, pressed;
 	qboolean lt, rt;
 	while (SDL_PollEvent(&event))
 	{
@@ -99,26 +153,51 @@ void Sys_SendKeyEvents(void)
 	}
 	Xbox_OpenController();
 	if (!controller || !joy_enable.integer)
+	{
+		DP_ButtonGate_Update(&attract_button_gate, false, -1, 0);
+		attract_consume_until_release = false;
 		return;
+	}
 	SDL_GameControllerUpdate();
+	buttonmask = Xbox_ButtonMask(&lt, &rt);
+	joystick = SDL_GameControllerGetJoystick(controller);
+	instance = joystick ? (int32_t)SDL_JoystickInstanceID(joystick) : -1;
+	pressed = DP_ButtonGate_Update(&attract_button_gate, true, instance, buttonmask);
 
-	Xbox_KeyEdge(0, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_A), K_JOY1, K_ENTER);
-	Xbox_KeyEdge(1, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_B), K_JOY2, K_ESCAPE);
-	Xbox_KeyEdge(2, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_X), K_JOY3, K_ENTER);
-	Xbox_KeyEdge(3, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_Y), K_JOY4, K_ESCAPE);
-	/* nxdk maps Original Xbox White/Black onto the SDL shoulder slots. */
-	Xbox_KeyEdge(4, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSHOULDER), K_JOY5, K_LEFTARROW);
-	Xbox_KeyEdge(5, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER), K_JOY6, K_RIGHTARROW);
-	Xbox_KeyEdge(6, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_LEFTSTICK), K_JOY7, 0);
-	Xbox_KeyEdge(7, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_RIGHTSTICK), K_JOY8, 0);
-	Xbox_KeyEdge(8, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_UP), K_AUX3, K_UPARROW);
-	Xbox_KeyEdge(9, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_DOWN), K_AUX4, K_DOWNARROW);
-	Xbox_KeyEdge(10, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_LEFT), K_AUX5, K_LEFTARROW);
-	Xbox_KeyEdge(11, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT), K_AUX6, K_RIGHTARROW);
-	Xbox_KeyEdge(12, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_START), K_ESCAPE, K_ESCAPE);
-	Xbox_KeyEdge(13, SDL_GameControllerGetButton(controller, SDL_CONTROLLER_BUTTON_BACK), K_ESCAPE, K_ESCAPE);
-	lt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT) > 8192;
-	rt = SDL_GameControllerGetAxis(controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT) > 8192;
+	/* A takeover press is consumed completely. Releases cannot leak into the
+	 * menu, and a button already held at startup/reconnect never counts as a
+	 * fresh takeover action. Analog stick drift is not part of buttonmask. */
+	if (attract_consume_until_release)
+	{
+		if (!buttonmask)
+		{
+			attract_consume_until_release = false;
+			memset(oldbuttons, 0, sizeof(oldbuttons));
+		}
+		return;
+	}
+	if (Xbox_AttractActive() && pressed)
+	{
+		Xbox_AttractTakeover();
+		attract_consume_until_release = true;
+		memset(oldbuttons, 0, sizeof(oldbuttons));
+		return;
+	}
+
+	Xbox_KeyEdge(0, (buttonmask & (1u << 0)) != 0, K_JOY1, K_ENTER);
+	Xbox_KeyEdge(1, (buttonmask & (1u << 1)) != 0, K_JOY2, K_ESCAPE);
+	Xbox_KeyEdge(2, (buttonmask & (1u << 2)) != 0, K_JOY3, K_ENTER);
+	Xbox_KeyEdge(3, (buttonmask & (1u << 3)) != 0, K_JOY4, K_ESCAPE);
+	Xbox_KeyEdge(4, (buttonmask & (1u << 4)) != 0, K_JOY5, K_LEFTARROW);
+	Xbox_KeyEdge(5, (buttonmask & (1u << 5)) != 0, K_JOY6, K_RIGHTARROW);
+	Xbox_KeyEdge(6, (buttonmask & (1u << 6)) != 0, K_JOY7, 0);
+	Xbox_KeyEdge(7, (buttonmask & (1u << 7)) != 0, K_JOY8, 0);
+	Xbox_KeyEdge(8, (buttonmask & (1u << 8)) != 0, K_AUX3, K_UPARROW);
+	Xbox_KeyEdge(9, (buttonmask & (1u << 9)) != 0, K_AUX4, K_DOWNARROW);
+	Xbox_KeyEdge(10, (buttonmask & (1u << 10)) != 0, K_AUX5, K_LEFTARROW);
+	Xbox_KeyEdge(11, (buttonmask & (1u << 11)) != 0, K_AUX6, K_RIGHTARROW);
+	Xbox_KeyEdge(12, (buttonmask & (1u << 12)) != 0, K_ESCAPE, K_ESCAPE);
+	Xbox_KeyEdge(13, (buttonmask & (1u << 13)) != 0, K_ESCAPE, K_ESCAPE);
 	Xbox_KeyEdge(14, lt, K_AUX1, 0);
 	Xbox_KeyEdge(15, rt, K_AUX2, 0);
 }
@@ -161,6 +240,8 @@ void VID_Init(void)
 	Cvar_RegisterVariable(&joy_sensitivityup);
 	Cvar_RegisterVariable(&joy_sensitivitypitch);
 	Cvar_RegisterVariable(&joy_sensitivityyaw);
+	DP_ButtonGate_Reset(&attract_button_gate);
+	attract_consume_until_release = false;
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
 		Con_Printf("SDL controller init failed: %s\n", SDL_GetError());
 	Xbox_OpenController();
@@ -197,6 +278,8 @@ void VID_Shutdown(void)
 		SDL_GameControllerClose(controller);
 		controller = NULL;
 	}
+	DP_ButtonGate_Reset(&attract_button_gate);
+	attract_consume_until_release = false;
 	if (pbgl_started)
 	{
 		pbgl_shutdown();
