@@ -63,6 +63,22 @@ class ReleaseInputsTests(unittest.TestCase):
             with self.assertRaises(release_inputs.ReleaseInputError):
                 release_inputs.verify_file(path, hashlib.sha256(b"release").hexdigest())
 
+    def test_verify_content_checks_sha256_and_historical_md5(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "nexuiz-252.zip"
+            path.write_bytes(b"release")
+            release_inputs.verify_content(
+                path,
+                hashlib.sha256(b"release").hexdigest(),
+                hashlib.md5(b"release").hexdigest(),
+            )
+            with self.assertRaises(release_inputs.ReleaseInputError):
+                release_inputs.verify_content(
+                    path,
+                    hashlib.sha256(b"release").hexdigest(),
+                    "0" * 32,
+                )
+
     def test_repository_lock_in_repo_matches_versions_and_nxdk_pin(self):
         lock = release_inputs.load_lock(ROOT / "xbox" / "release" / "release-inputs.json")
         versions = (ROOT / "xbox" / "classic" / "versions.mk").read_text(encoding="utf-8")
@@ -73,6 +89,7 @@ class ReleaseInputsTests(unittest.TestCase):
         self.assertIn(f"OGG_REV := {lock['repositories']['ogg']['commit']}", versions)
         self.assertIn(f"VORBIS_REV := {lock['repositories']['vorbis']['commit']}", versions)
         self.assertIn(f"NEXUIZ_252_SHA256 := {lock['content']['sha256']}", versions)
+        self.assertIn(f"NEXUIZ_252_MD5 := {lock['content']['md5']}", versions)
 
 
 if __name__ == "__main__":
