@@ -14,8 +14,10 @@ class ClassicBuildContractTests(unittest.TestCase):
 
     def test_vorbis_build_is_decode_only_and_does_not_wildcard_encoder_sources(self):
         self.assertNotIn("$(wildcard $(VORBIS_DIR)/lib/*.c)", self.make)
+        self.assertIn("VORBIS_CORE_NAMES :=", self.make)
+        self.assertIn("synthesis.c", self.make)
+        self.assertIn("$(addprefix $(VORBIS_DIR)/lib/,$(VORBIS_CORE_NAMES))", self.make)
         self.assertIn("$(VORBIS_DIR)/lib/vorbisfile.c", self.make)
-        self.assertIn("$(VORBIS_DIR)/lib/synthesis.c", self.make)
         self.assertNotIn("$(VORBIS_DIR)/lib/vorbisenc.c", self.make)
 
     def test_xbox_uses_disc_basedir_and_separate_writable_userdir(self):
