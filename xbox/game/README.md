@@ -1,133 +1,93 @@
-# Native Nexuiz engine target — source delivery
+# Nexuiz Xbox Engine Target
 
-**Untested implementation. No compilation, unit tests, CI build/tests, emulator,
-or hardware run was performed for this delivery, at the owner's request.**
-Do not infer a successful link, boot or playable game from these source files.
+This directory owns the production DarkPlaces/Nexuiz Xbox executable. It is separate from the two diagnostics:
 
-This is the third Xbox target. Unlike `xbox/` and `xbox/inputcheck/`, its explicit
-source list includes the real DarkPlaces host, client, listen-server code, PRVM,
-VFS, model/collision code, menus, autoplay and controller graphics menu. It has a
-native entry/system backend and calls normal `Host_Init`/`Host_Frame`.
+```text
+xbox/Makefile                 DarkPlaces Xbox Foundation
+xbox/inputcheck/Makefile      DarkPlaces Controller Check
+xbox/game/Makefile            Nexuiz Xbox engine target
+```
 
-The current `engine-bootstrap` profile intentionally keeps `cl_available=false`
-and null audio. **It is not the finished playable Option B game.** The native
-renderer, rendered UI, audio/codec coverage and complete gameplay/LAN sessions
-remain outstanding. The title `Nexuiz Xbox` identifies the engine target, not a
-claim that those remaining implementations exist. Do not hand this XBE to a
-player expecting the full game or automatic rendered demo playback yet.
+## Current source boundary
 
-## Build entry for the development/test box
+The target now has two explicit renderer selections:
 
-From the repository root, with a recursive checkout of the recorded nxdk:
+```text
+XBOX_RENDERER=bootstrap       prior non-rendering engine bootstrap
+XBOX_RENDERER=native          direct NV2A source path under construction
+```
+
+`bootstrap` remains the default until the complete renderer source set is present. Native mode currently contains the video/device/presentation lifecycle, but not yet state translation, mesh submission, textures, fixed NV2A programs, 2D UI, BSP rendering, model rendering, or material coverage. It is therefore not a playable build and has not been compiled or executed as part of this source delivery.
+
+The native video source owns:
+
+- `XVideoSetMode(640, 480, 32, REFRESH_DEFAULT)`;
+- pbkit initialization and shutdown;
+- actual fixed-mode metadata and `RENDERPATH_XBOX` identity;
+- frame begin, back-buffer targeting, bounded GPU waits, and presentation queuing;
+- optional vblank pacing through the existing `vid_vsync` control;
+- controller polling and the existing attract-mode/controller takeover path;
+- reverse-order cleanup after partial initialization failure.
+
+`sys_xbox.c` no longer creates a diagnostic framebuffer before `Host_Init`; early failures use the kernel/debug channel. `cl_available` is true in the native video source because DarkPlaces checks it before calling `VID_Init`; renderer runtime readiness is tracked separately and does not imply that the remaining renderer modules exist.
+
+## Required inputs
+
+A normal invocation will eventually use:
 
 ```sh
 make -C xbox/game \
-  NXDK_DIR=/absolute/path/to/nxdk \
-  CONTENT_DIR=/absolute/path/to/prepared-nexuiz
+  NXDK_DIR=/absolute/path/to/pinned/nxdk \
+  CONTENT_DIR=/absolute/path/to/prepared-nexuiz \
+  XBOX_RENDERER=native
 ```
 
-This command is provided for a later build, not reported as executed here. It
-requires Python 3.10+, Git, the nxdk build prerequisites and real prepared content.
-The existing foundation and controller diagnostics retain their own commands,
-identities, source lists and outputs.
+The makefile rejects missing or mismatched prerequisites before compiling:
 
-`CONTENT_DIR` must be the output of `tools/xbox/nexuiz_prepare.py stage` with
-`--require-autoplay`, containing `manifest.json` and `data/xboxprep.pk3`. Include
-the real `default.cfg`, `progs.dat`, `menu.dat`, generated `xbox-benchmark.cfg`,
-a selected demo and its actual content dependencies. These are necessary inputs,
-not proof that the selected map is complete or fits runtime memory. No dummy
-QuakeC file or fabricated map is substituted when content is missing. Neither
-this change nor its source artifact redistributes Nexuiz data.
+- the pinned nxdk revision and recursive submodules;
+- an output produced by the repository content-preparation path;
+- required gamecode/startup/demo content and its manifest;
+- a generated source/toolchain/content identity.
 
-Planned build outputs:
+The project does not generate dummy gamecode or silently package unverified content.
+
+## Planned outputs
+
+When the target is complete and successfully built, its intended outputs are:
 
 ```text
 xbox/game/build/disc/default.xbe
 xbox/game/nexuiz-xbox.iso
 xbox/game/build/nexuiz-xbox.map
-xbox/game/build/generated/build-identity.json
-xbox/game/build/content-identity.json
+xbox/game/build/generated/xbox_build_identity.h
 ```
 
-Only `build/disc` is packed into the XISO; metadata remains outside it. Shared
-engine objects have their own `build/obj` paths, avoiding stale-object reuse with
-the diagnostics. A content change forces XISO repacking. Build identity is a
-content-updated generated header, so a changed Git revision rebuilds its consumers.
-The new source-audit utility is an inventory, not a compiler/linker substitute:
+Their presence is not claimed by the current source-only delivery.
 
-```sh
-python3 tools/xbox/audit_game_link.py --root . \
-  --manifest xbox/game/sources.mk --output /work/source-audit.json
-```
+## Remaining graphics work
 
-## Implemented source boundaries
+The direct NV2A plan is in:
 
-- `sys_xbox.c`: real process entry/engine loop, high-resolution SDL counter,
-  bounded sleep, native early/fatal diagnostics, optional-service failure,
-  initialization/shutdown and an explicit `-nexuiz` startup.
-- `xbox/platform/platform.c`: content root from the actual launched XBE's NT
-  path, native directory/file attributes and removal, isolated writable UDATA
-  root and write-failure detection. HDD and disc roots are not conflated.
-- `fs.c`/`filematch.c`: native VFS hooks and SDL RWops, including failed handle
-  duplication and zero-progress write handling. Unsupported lock requests fail
-  instead of pretending an OS lock was acquired.
-- `xbox/platform/zalloc.h`: allocator hooks for nxdk's static Z_SOLO zlib. JPEG
-  uses its existing static-link engine path. PNG/Vorbis/other optional libraries
-  still need an explicit native static binding; no DLL loader is emulated.
-- `vid_xbox_bootstrap.c`: honest non-rendering frontend with the production
-  controller adapter. X prints engine state; Back requests shutdown. These are
-  bootstrap controls, not a substitute for the merged gameplay/menu mappings.
-- `taskqueue.c`: bounded compiled worker storage and enforcement of disabled
-  engine worker threads after workload sizing. SDK service threads are retained.
-- `lhnet.c`/`xbox/platform/network.c`: native lwIP sockets, strict numeric IPv4/
-  port parsing, real loopback, asynchronous SDK initialization and nonblocking
-  interface-status sampling. Initial DHCP timeout does not spawn another stack.
-  This is transport preparation, not verified LAN matchmaking or a played match.
-- `netconn.c`/`no_downloads.c`: Internet master queries/advertising and external
-  downloads are disabled for Option B. Existing game packet/protocol ownership
-  remains in `netconn.c`; content is not silently downloaded to bypass mismatch.
+- `docs/superpowers/specs/2026-09-16-nv2a-renderer-design.md`
+- `docs/superpowers/plans/2026-09-16-nv2a-renderer-implementation.md`
 
-The currently linked upstream `gl_*` common modules own symbols also used by its
-normal dedicated-server build. They remain **dormant** during the bootstrap;
-there is no selected GL32/GLES2 context and no dummy successful shader backend.
-Removing them before native replacements exist would turn this into a collection
-of unresolved symbols or fake stubs. This is an explicit correction to the plan's
-initial blanket source exclusion, not a claim that SDL provides native NV2A GL.
+The remaining graphics sequence is:
 
-## Runtime markers and limits
+1. state cache, viewport/scissor, clear, depth/blend/cull/stencil, and render-target ownership;
+2. bounded vertex/index buffers and indexed draw submission;
+3. textures, conversions, swizzling, mipmaps, and residency;
+4. precompiled vertex programs and register-combiner recipes;
+5. deterministic material planning;
+6. 2D console/menu/HUD/text;
+7. BSP/lightmaps/sky/fog/alpha;
+8. models, weapons, particles, sprites, beams, and decals;
+9. bounded dynamic-light, DOT3, reflection, and quality tiers;
+10. final source cutover from bootstrap to native.
 
-`XBOX_GAME_FS_READY` is printed only after real `FS_Init` returns.
-`XBOX_GAME_HOST_INIT` is printed only after real `Host_Init` returns.
-`XBOX_GAME_CORE_ALIVE` is printed by X during the real engine frame loop.
-None is a claim that a map was rendered, a demo played or a match completed.
-Automatic implicit dedicated-server map loading is suppressed in this profile so
-missing rendering cannot be mistaken for a playable launch. The existing attract
-hooks/configuration stay intact for the later native-client integration.
+## Non-graphics boundaries
 
-Early output uses the framebuffer plus kernel `DbgPrint`; capture of that kernel
-channel in a particular xemu configuration still requires setup. There is no
-claim that it automatically appears in ordinary host stdout. Video initialization
-failure stops before framebuffer use. Fatal errors do not invoke an unsafe
-partially initialized engine teardown.
+The current engine source includes filesystem and low-level LAN transport preparation. Audio is still null, no complete offline or LAN game has been demonstrated, and no real Nexuiz package is committed. These remain separate implementation and verification gates.
 
-The 1 MiB stack reservation is provisional and unmeasured. Memory-size cvars
-remain unknown rather than using desktop address-space guesses or `/proc`. Total 64 MiB fit,
-loading peaks, service buffers, CPU instruction coverage, port/reconnect behavior,
-static codec coverage, content completeness and actual link success are unverified.
-The network service initializes once per XBE lifetime because the pinned SDK's
-`nxNetShutdown` does not tear down its threads. Full LAN host/join UI, reconnect
-session behavior and compatible peer acceptance remain issue #36.
+## Evidence policy
 
-## Publication and next work
-
-This source-only delivery advances the approved production engine-target plan;
-no green check or binary from older diagnostics is reused as evidence. The commit
-uses `[skip ci]` so the existing build/test workflows do not run on this revision.
-No tests were added or executed. A source-publication job, when used to transport
-these changes, only applies and commits source; it does not compile or run it.
-
-The full release contract is still `wiki/Playable-Game-and-LAN.md`: playable
-Nexuiz offline plus LAN, audio, persistent/controller UI and zero-action startup
-into the demo loop. Native rendering and final game integration cannot be replaced
-by this headless profile. Issues #7–#15/#18/#36 remain open until their respective
-compile/link/runtime requirements have been met.
+Compilation, linking, XBE conversion, ISO packaging, xemu boot, frame presentation, map rendering, gameplay, LAN sessions, audio, memory fit, and hardware soak are separate claims. The source in this branch was prepared without running those gates at the owner’s request.
