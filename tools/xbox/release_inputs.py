@@ -85,12 +85,14 @@ def load_lock(path: Path) -> dict[str, Any]:
         seen_paths.add(checkout_path.casefold())
 
     content = _exact_keys(
-        lock["content"], {"filename", "url", "sha256", "md5"}, "content"
+        lock["content"], {"filename", "url", "bytes", "sha256", "md5"}, "content"
     )
     if content["filename"] != "nexuiz-252.zip":
         raise ReleaseInputError("content filename must be nexuiz-252.zip")
     if not isinstance(content["url"], str) or not content["url"].startswith("https://"):
         raise ReleaseInputError("content URL must use HTTPS")
+    if type(content["bytes"]) is not int or content["bytes"] <= 0 or content["bytes"] >= 2**63:
+        raise ReleaseInputError("content bytes must be a positive 63-bit integer")
     if not isinstance(content["sha256"], str) or not HEX64.fullmatch(content["sha256"]):
         raise ReleaseInputError("content SHA-256 must be 64 lowercase hexadecimal characters")
     if not isinstance(content["md5"], str) or not HEX32.fullmatch(content["md5"]):
@@ -127,13 +129,23 @@ def verify_file(path: Path, expected_sha256: str) -> None:
         )
 
 
-def verify_content(path: Path, expected_sha256: str, expected_md5: str) -> None:
+def verify_content(path: Path, expected_bytes: int, expected_sha256: str, expected_md5: str) -> None:
+    if type(expected_bytes) is not int or expected_bytes <= 0:
+        raise ReleaseInputError("expected content size is malformed")
     if not HEX64.fullmatch(expected_sha256):
         raise ReleaseInputError("expected SHA-256 is malformed")
     if not HEX32.fullmatch(expected_md5):
         raise ReleaseInputError("expected MD5 is malformed")
     if not path.is_file():
         raise ReleaseInputError(f"required file does not exist: {path}")
+    try:
+        actual_bytes = path.stat().st_size
+    except OSError as exc:
+        raise ReleaseInputError(f"cannot stat {path}: {exc}") from exc
+    if actual_bytes != expected_bytes:
+        raise ReleaseInputError(
+            f"size mismatch for {path}: expected {expected_bytes}, got {actual_bytes}"
+        )
     actual_sha256, actual_md5 = file_hashes(path)
     if actual_sha256 != expected_sha256:
         raise ReleaseInputError(
@@ -213,6 +225,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "verify-archive":
             verify_content(
                 args.archive,
+                lock["content"]["bytes"],
                 lock["content"]["sha256"],
                 lock["content"]["md5"],
             )
