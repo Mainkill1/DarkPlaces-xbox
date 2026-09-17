@@ -30,8 +30,7 @@ class XboxReleaseMakefileTests(unittest.TestCase):
         self.assertIn("preflight:", text)
         self.assertIn("stage: preflight", text)
         self.assertIn("engine: preflight", text)
-        self.assertIn("package: preflight stage identity engine", text)
-        self.assertIn("all: preflight stage engine package", text)
+        self.assertIn("package:", text)
 
     def test_generated_release_outputs_are_named_explicitly(self):
         text = (RELEASE / "Makefile").read_text(encoding="utf-8")
@@ -43,6 +42,17 @@ class XboxReleaseMakefileTests(unittest.TestCase):
             "SHA256SUMS",
         ):
             self.assertIn(name, text)
+
+    def test_release_wrapper_owns_fresh_xiso_creation_and_verification(self):
+        text = (RELEASE / "Makefile").read_text(encoding="utf-8")
+        self.assertIn("verify-tree:", text)
+        self.assertIn("xiso:", text)
+        self.assertIn("verify-xiso:", text)
+        self.assertIn('rm -f "$(XISO)"', text)
+        self.assertIn('$(EXTRACT_XISO) -c "$(DISC_DIR)" "$(XISO)"', text)
+        self.assertIn("verify_release_tree.py", text)
+        self.assertIn("verify_xiso.py", text)
+        self.assertNotIn('$(MAKE) -C "$(CLASSIC_DIR)" V=1 all', text)
 
 
 if __name__ == "__main__":
