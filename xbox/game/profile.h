@@ -26,6 +26,10 @@
 /* zlib/JPEG use the pinned SDK static libraries, not desktop DLL loading. */
 #define DP_XBOX_PROFILE_NAME "engine-bootstrap"
 #define DP_XBOX_MEMORY_TARGET_MIB 64
+
+/* Capability bits remain evidence-backed runtime claims. Renderer source mode
+ * is selected by xbox/game/Makefile through DP_XBOX_NATIVE_RENDERER or
+ * DP_XBOX_RENDERER_BOOTSTRAP; neither source selection proves this bit. */
 #define DP_XBOX_CAP_RENDERER 0
 #define DP_XBOX_CAP_AUDIO 0
 #define DP_XBOX_CAP_NETWORK 0
