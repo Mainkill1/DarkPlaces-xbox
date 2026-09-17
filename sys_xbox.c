@@ -3,8 +3,6 @@
  * it calls the real Host_Init/Host_Frame, never a replacement game loop.
  */
 #include <windows.h>
-#include <hal/video.h>
-#include <hal/debug.h>
 #include <SDL.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -27,7 +25,7 @@ qbool sys_supportsdlgetticks = true;
 cvar_t sys_usenoclockbutbenchmark = {CF_SHARED | CF_READONLY,
     "sys_usenoclockbutbenchmark", "0", "Synthetic clock is unavailable in the native engine bootstrap"};
 cvar_t sys_libdir = {CF_SHARED | CF_READONLY, "sys_libdir", "", "Xbox dependencies are linked statically"};
-static cvar_t sys_stdout = {CF_SHARED, "sys_stdout", "1", "Emit kernel/framebuffer diagnostics"};
+static cvar_t sys_stdout = {CF_SHARED, "sys_stdout", "1", "Emit kernel diagnostics"};
 static qbool platform_initialized;
 static Uint64 counter_origin;
 static Uint64 counter_frequency;
@@ -202,7 +200,11 @@ int Sys_Main(int argc, char **argv)
     Sys_Printf("XBOX_GAME_HOST_INIT\nprofile=%s source=%s dirty=%d nxdk=%s\n",
         DP_XBOX_PROFILE_NAME, DP_XBOX_SOURCE_REVISION, DP_XBOX_SOURCE_DIRTY,
         DP_XBOX_NXDK_REVISION);
+#ifdef DP_XBOX_NATIVE_RENDERER
+    Sys_Printf("ENGINE BRINGUP: renderer=native-video audio=null LAN=transport-only\n");
+#else
     Sys_Printf("ENGINE BOOTSTRAP: renderer=unimplemented audio=null LAN=transport-only\n");
+#endif
     DP_XboxStage("frame-loop");
     for (;;) {
         DP_XboxNetworkPoll();
@@ -225,13 +227,9 @@ int DP_XboxMain(void)
 {
     char *arguments[12];
     int count = 0;
-    /* Video failure is reported through DbgPrint, not a null framebuffer. */
-    if (XVideoSetMode(640, 480, 32, REFRESH_DEFAULT)) {
-        DP_XboxSetDebugVideo(1);
-        debugClearScreen();
-    } else {
-        Sys_Error("Could not initialize diagnostic video mode");
-    }
+    /* Native video mode and pbkit ownership belong to vid_xbox.c. Early
+     * startup remains diagnosable through DbgPrint before the renderer exists. */
+    DP_XboxSetDebugVideo(0);
     DP_XboxStage("entry");
     DP_XboxInitRoots();
     if (!DP_XboxContentRoot()[0]) Sys_Error("Cannot determine the executable content root");
