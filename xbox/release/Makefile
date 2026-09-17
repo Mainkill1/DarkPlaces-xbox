@@ -96,8 +96,8 @@ deps:
 	clone_pin vorbis xiph/vorbis "$(VORBIS_REV)" no
 
 # Never trust a partially downloaded or changed archive. Existing archives are
-# verified first; a new download is written to a temporary path, verified, then
-# atomically renamed into place.
+# verified first; a new download is written to a temporary path, verified by
+# exact byte count + SHA-256 + historical MD5, then atomically renamed.
 content:
 	@set -eu; \
 	mkdir -p "$(dir $(NEXUIZ_ARCHIVE))"; \
@@ -138,6 +138,7 @@ identity: stage
 		echo "pbgl=$(PBGL_REV)"; \
 		echo "ogg=$(OGG_REV)"; \
 		echo "vorbis=$(VORBIS_REV)"; \
+		echo "nexuiz_bytes=$(NEXUIZ_252_BYTES)"; \
 		echo "nexuiz_sha256=$(NEXUIZ_252_SHA256)"; \
 		echo "nexuiz_md5=$(NEXUIZ_252_MD5)"; \
 		echo "content_identity_sha256=$$(sha256sum "$(CONTENT_IDENTITY)" | awk '{print $$1}')"; \
