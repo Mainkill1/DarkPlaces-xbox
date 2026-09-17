@@ -38,19 +38,14 @@ def build_fixture(path: Path, corrupt_payload: bool = False) -> tuple[Path, dict
     image = bytearray(40 * sector)
     magic = b"MICROSOFT*XBOX*MEDIA"
 
-    # Root table has one entry at offset 0. Its right child is stored at DWORD 8.
+    # Root table: default.xbe -> CONTENT-IDENTITY.json -> data.
     root_sector = 34
-    root = bytearray(sector)
-    root[:] = b"\xff" * sector
-    root_entry = entry("default.xbe", 36, 8, right=8)
-    write_at(root, 0, root_entry)
-    meta_entry = entry("CONTENT-IDENTITY.json", 37, 4, right=16)
-    write_at(root, 8 * 4, meta_entry)
-    data_entry = entry("data", 35, sector, attrs=0x10)
-    write_at(root, 16 * 4, data_entry)
+    root = bytearray(b"\xff" * sector)
+    write_at(root, 0, entry("default.xbe", 36, 8, right=8))
+    write_at(root, 8 * 4, entry("CONTENT-IDENTITY.json", 37, 4, right=18))
+    write_at(root, 18 * 4, entry("data", 35, sector, attrs=0x10))
 
-    data = bytearray(sector)
-    data[:] = b"\xff" * sector
+    data = bytearray(b"\xff" * sector)
     pk3 = b"PK3!"
     write_at(data, 0, entry("data20091001.pk3", 38, len(pk3)))
 
