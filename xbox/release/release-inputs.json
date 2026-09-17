@@ -19,7 +19,7 @@
     },
     "ogg": {
       "repository": "xiph/ogg",
-      "commit": "e1774cd77f471443541596e09078e78fdc342e4f",
+      "commit": "be05b13e98b048f0b5a0f5fa8ce514d56db5f822",
       "path": "deps/ogg"
     },
     "vorbis": {
@@ -31,6 +31,7 @@
   "content": {
     "filename": "nexuiz-252.zip",
     "url": "https://sourceforge.net/projects/nexuiz/files/NexuizRelease/Nexuiz%202.5.2/nexuiz-252.zip/download",
+    "bytes": 931253731,
     "sha256": "a5e27ebcc9775c4a490d0d3536c32e4a8f8f96b038c0b6a78d1823c37a962000",
     "md5": "d750bc328e58df8492f8d88bdcf818cb"
   }
