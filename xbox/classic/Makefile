@@ -55,12 +55,13 @@ PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/vid_xbox.c \
 	$(CLASSIC_PORT_DIR)/gl_compat.c \
 	$(CLASSIC_PORT_DIR)/snd_xbox.c \
-	$(CLASSIC_PORT_DIR)/net_xbox.c
+	$(CLASSIC_PORT_DIR)/net_xbox.c \
+	$(ROOT_DIR)/xbox/attract_policy.c
 
 SRCS := $(PORT_SRCS) $(ENGINE_SRCS) $(OGG_SRCS) $(VORBIS_SRCS)
 
 CFLAGS += -O2 -fno-strict-aliasing -ffunction-sections -fdata-sections
-CFLAGS += -I$(ENGINE_DIR) -I$(CLASSIC_INCLUDE_DIR)
+CFLAGS += -I$(ENGINE_DIR) -I$(CLASSIC_INCLUDE_DIR) -I$(ROOT_DIR)
 CFLAGS += -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -I$(VORBIS_DIR)/lib
 CFLAGS += -I$(PBGL_DIR)/include
 CFLAGS += -DDP_PLATFORM_XBOX=1 -DXBOX=1 -DCONFIG_MENU=1
@@ -91,4 +92,5 @@ print-pins:
 	@echo "pbGL       $(PBGL_REV)"
 	@echo "libogg     $(OGG_REV)"
 	@echo "libvorbis  $(VORBIS_REV)"
+	@echo "Nexuiz SHA $(NEXUIZ_252_SHA256)"
 	@echo "Nexuiz MD5 $(NEXUIZ_252_MD5)"
