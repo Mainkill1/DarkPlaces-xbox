@@ -201,8 +201,10 @@ Uncapped throughput tests must use a declared `simulated` or `off` profile. Audi
 4. Open the exact fixed device while paused.
 5. Validate obtained format and callback size.
 6. Reset producer, consumer, submitted, and clock-extension state.
-7. Pre-mix and submit the normal target where engine state permits; otherwise begin with silence.
-8. Start playback and emit one main-thread initialization record.
+7. Return from device initialization with playback still paused so the first engine update can mix and submit PCM.
+8. On the first successful `SndSys_Submit()`, require at least the 2,048-frame low-water amount, prefer the 6,144-frame target, then unpause playback and emit one main-thread initialization record.
+
+This priming rule prevents startup from being counted as an underrun merely because `SndSys_Init()` runs before the first normal sound update. If the engine cannot produce the low-water amount, the backend remains paused and reports the blocked reason from the main thread.
 
 An output-device failure is diagnosable rather than a memory-unsafe partial start. The engine may continue to a visible/logged error state, but the run is invalid for playable-release acceptance and `DP_XBOX_CAP_AUDIO` remains false.
 
@@ -372,7 +374,7 @@ This is a control budget, not measured proof. Issue #13 may revise category boun
 | Codec heap across both slots | 768 KiB |
 | Decoded short-SFX cache | 1,408 KiB hard; 1,024 KiB soft |
 | Metadata, counters, allocator records | 128 KiB |
-| Transition, fragmentation, and failure reserve | 568 KiB |
+| Transition, fragmentation, and failure reserve | 536 KiB |
 | **Total runtime audio-data ceiling** | **3,072 KiB** |
 
 Decoder executable code and static read-only tables are also measured in the executable/static category of the global memory budget. Codec allocations are routed through tracked wrappers or an equivalent allocator-accounting boundary so the decoder cannot bypass the audio ceiling unnoticed.
