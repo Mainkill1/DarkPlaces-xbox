@@ -1,10 +1,11 @@
-# Native DarkPlaces engine target. The default profile is an explicit headless
-# engine bootstrap, not a renamed foundation app and not a playable release.
+# Native DarkPlaces engine target. The default profile remains the explicit
+# headless/bootstrap backend until the complete NV2A source set is cut over.
 .DEFAULT_GOAL := all
 ROOT_DIR := $(abspath $(CURDIR)/../..)
 NXDK_DIR ?= $(abspath $(ROOT_DIR)/../nxdk)
 PYTHON ?= python3
 CONTENT_DIR ?=
+XBOX_RENDERER ?= bootstrap
 export NXDK_DIR
 export PATH := $(NXDK_DIR)/bin:$(PATH)
 
@@ -17,6 +18,17 @@ OBJ_DIR := $(CURDIR)/build/obj
 IDENTITY_DIR := $(CURDIR)/build/generated
 
 include $(CURDIR)/sources.mk
+
+ifeq ($(XBOX_RENDERER),native)
+DP_XBOX_SOURCES := $(DP_XBOX_NATIVE_SOURCES)
+GAME_RENDER_CPPFLAGS := -DDP_XBOX_NATIVE_RENDERER=1
+else ifeq ($(XBOX_RENDERER),bootstrap)
+DP_XBOX_SOURCES := $(DP_XBOX_BOOTSTRAP_SOURCES)
+GAME_RENDER_CPPFLAGS := -DDP_XBOX_RENDERER_BOOTSTRAP=1
+else
+$(error XBOX_RENDERER must be native or bootstrap)
+endif
+
 GAME_SOURCES := $(filter-out xbox/game/entry.c,$(DP_XBOX_SOURCES))
 GAME_OBJECTS := $(addprefix $(OBJ_DIR)/,$(GAME_SOURCES:.c=.obj))
 GAME_DEPENDENCIES := $(GAME_OBJECTS:.obj=.d)
@@ -60,7 +72,7 @@ include $(NXDK_DIR)/Makefile
 GAME_FLAGS := -std=c17 -O1 -g -fno-omit-frame-pointer -Wall -Wextra
 GAME_FLAGS += -I$(ROOT_DIR) -I$(IDENTITY_DIR)
 GAME_FLAGS += -include $(CURDIR)/profile.h -include $(IDENTITY_DIR)/xbox_build_identity.h
-GAME_FLAGS += -DCONFIG_MENU -fno-fast-math
+GAME_FLAGS += -DCONFIG_MENU -fno-fast-math $(GAME_RENDER_CPPFLAGS)
 
 # The SDK entry object is target-local and must also track build identity.
 $(CURDIR)/entry.obj: CFLAGS += $(GAME_FLAGS)
@@ -70,7 +82,7 @@ $(OBJ_DIR)/%.obj: $(ROOT_DIR)/%.c $(CURDIR)/profile.h $(IDENTITY_DIR)/xbox_build
 	@mkdir -p "$(@D)"
 	$(CC) $(NXDK_CFLAGS) $(GAME_FLAGS) -MMD -MP -MF "$(@:.obj=.d)" -MT "$@" -c "$<" -o "$@"
 
-.PHONY: stage-game-content source-audit clean-game
+.PHONY: stage-game-content source-audit renderer-source-audit clean-game
 stage-game-content:
 	$(PYTHON) "$(ROOT_DIR)/tools/xbox/stage_game_disc.py" --content "$(CONTENT_DIR)" --disc "$(OUTPUT_DIR)"
 
@@ -80,6 +92,9 @@ $(GEN_XISO): stage-game-content
 
 source-audit:
 	$(PYTHON) "$(ROOT_DIR)/tools/xbox/audit_game_link.py" --root "$(ROOT_DIR)" --manifest "$(CURDIR)/sources.mk" --output "$(CURDIR)/build/source-audit.json"
+
+renderer-source-audit:
+	$(PYTHON) "$(ROOT_DIR)/tools/xbox/audit_renderer_sources.py" --root "$(ROOT_DIR)" --manifest "$(CURDIR)/sources.mk" --mode "$(XBOX_RENDERER)"
 
 clean-game:
 	rm -rf "$(CURDIR)/build"
