@@ -35,13 +35,15 @@ joy_sensitivityyaw -1.4
 bind JOY1 +jump
 bind JOY2 +crouch
 bind JOY3 dropweapon
-bind JOY4 _weapprev
+bind JOY4 weaplast
 bind JOY5 weapprev
 bind JOY6 weapnext
+bind JOY7 +hook
+bind JOY8 +zoom
 bind AUX1 +attack2
 bind AUX2 +attack
-bind AUX3 +hook
-bind AUX4 +zoom
+bind AUX3 +showscores
+bind AUX4 +show_info
 bind AUX5 weapprev
 bind AUX6 weapnext
 vid_vsync 0
