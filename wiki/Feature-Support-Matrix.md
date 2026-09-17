@@ -32,7 +32,7 @@ This matrix states required policy, **not proof of implementation**. [Option B](
 | Internet browsing/advertising/NAT services | Excluded from Option B | no unsolicited external service traffic |
 | Settings and supported progression persistence | Required | save/relaunch and failed-write recovery |
 | Controller input | Required for controls | hardware test |
-| Audio | Required for playable game; muted/no-audio benchmarking remains an explicit separate profile | positional effects, music, underrun/restart tests |
+| Audio | [48 kHz S16 stereo through bounded nxdk SDL2 output](Xbox-Audio-Architecture); muted/simulated/off benchmarking remain distinct profiles | positional effects, music streaming, underrun/restart, xemu and retail hardware |
 | Runtime PNG/JPEG decoding | Bring-up only where affordable | memory trace |
 | Preconverted asset cache | Required for final workload | cache hit report |
 

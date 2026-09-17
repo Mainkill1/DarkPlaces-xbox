@@ -19,6 +19,9 @@ FPS alone is not enough. Vsync and frame caps can hide improvements or regressio
 - render-queue/build time;
 - GPU submission time where measurable;
 - present/wait time;
+- audio preparation/mix time;
+- active and mixed sound count;
+- output-queue occupancy or low-water state;
 - draw calls;
 - submitted triangles/vertices;
 - texture uploads and uploaded bytes;
@@ -33,12 +36,17 @@ For each marker interval report:
 - average, median, p95, p99, and maximum frame time;
 - dropped/over-budget frames;
 - draw/triangle/texture totals;
-- memory high-water;
+- audio mode, mixed frames, mixer/decode timing and peak voices;
+- audio underrun/low-water/stale-frame/emergency-read deltas;
+- audio cache, codec and stream memory high-water;
+- total memory high-water;
 - first occurrence of any backend fallback or error.
+
+Audio telemetry follows the [Xbox audio architecture](Xbox-Audio-Architecture). Callback code records fixed counters only; durable logging and interval summaries occur on the main thread. Audible, hardware-muted, simulated and no-audio runs are separate result identities.
 
 ## Output paths
 
-Support at least one durable result path on real hardware, such as a writable Xbox drive directory. Add UDP/serial-style live reporting only after file output is reliable. Every file starts with build, nxdk, content-pack, video-mode, profile, and hardware identifiers.
+Support at least one durable result path on real hardware, such as a writable Xbox drive directory. Add UDP/serial-style live reporting only after file output is reliable. Every file starts with build, nxdk, content-pack, content-audio manifest, audio mode, video-mode, profile, and hardware identifiers.
 
 ## Validation ladder
 
@@ -48,11 +56,12 @@ Support at least one durable result path on real hardware, such as a writable Xb
 4. Same XBE boots on hardware.
 5. Each renderer rung has a controlled reference scene.
 6. Selected BSP loads and survives camera traversal.
-7. One complete loop produces valid results.
-8. Repeated loops show stable memory and state.
-9. One-hour soak passes on xemu and 64 MB hardware.
-10. Complete offline/campaign and LAN host/client games pass #35/#36 with audio, persistence, recovery and content coverage.
-11. Packaged release reproduces game and benchmark results from a clean checkout.
+7. Fixed stereo audio passes tone, positional-effect, music-stream, loop and deliberate-underrun fixtures.
+8. One complete loop produces valid results.
+9. Repeated loops show stable memory, decoder, queue and game state.
+10. One-hour soak passes on xemu and 64 MB hardware.
+11. Complete offline/campaign and LAN host/client games pass #35/#36 with audio, persistence, recovery and content coverage.
+12. Packaged release reproduces game and benchmark results from a clean checkout.
 
 ## Evidence storage
 

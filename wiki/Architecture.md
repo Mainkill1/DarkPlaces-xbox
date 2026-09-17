@@ -31,7 +31,7 @@ World/model visibility and render queue construction
 - `sys_xbox.c`: entry point, timing, logging, fatal errors, shutdown.
 - `thread_xbox.c`: mutex/thread/condition behavior or documented single-thread fallback.
 - `vid_xbox.c`: fixed video mode, controller/event pump, GPU startup, present.
-- `snd_xbox.c`: SDL2 audio or native audio after an evidence-based choice.
+- `snd_xbox.c`: [fixed 48 kHz S16 stereo through nxdk SDL2](Xbox-Audio-Architecture), with main-thread mixing and a bounded callback queue.
 - filesystem adaptations: drive roots, read-only content, writable config/results.
 - `config_xbox.h`: separate actual diagnostic capabilities from the required playable profile.
 - native network adapter: preserve LHNET loopback/address/socket interfaces and netconn protocol; LAN discovery, direct join and listen hosting under #36.
@@ -51,9 +51,15 @@ The backend must own:
 - supported shader/material recipes;
 - fallback counters and diagnostics.
 
+## Audio boundary
+
+Keep DarkPlaces channel allocation, spatialization, resampling, mixing, music behavior, and WAV/Ogg fetchers. The Xbox platform layer owns only the fixed SDL device, a bounded PCM submission queue, presentation clock, lifecycle, and output telemetry.
+
+The SDL callback is a queue consumer, not an engine worker. Filesystem reads, Vorbis decode, floating-point mixing, allocation, and console output remain on the main thread. Music and long Ogg assets use file-backed VFS callbacks and fixed stream slots rather than retaining complete compressed tracks in memory. Audible, hardware-muted, simulated, and no-audio runs remain distinct result profiles.
+
 ## Content path
 
-Runtime decoding is useful for bring-up but should not define the final memory/performance path. A host-side converter should prebuild Xbox-ready texture and mesh caches while leaving source packages outside the repository unless their licenses are verified.
+Runtime decoding is useful for bring-up but should not define the final memory/performance path. A host-side converter should prebuild Xbox-ready texture and mesh caches while leaving source packages outside the repository unless their licenses are verified. Audio preparation inventories format, decoded size, loop metadata, stream policy, package compression and required/optional status; any conversion retains source and license traceability.
 
 ## Gameplay and resource ownership
 
@@ -61,4 +67,4 @@ Keep local/listen server, bot/entity state, game VMs and collision alongside the
 
 ## Determinism
 
-Benchmark mode owns the camera clock, random seed, quality profile, workload markers, and loop reset. Interactive controller input may pause, restart, toggle overlays, or quit, but cannot affect measured camera motion.
+Benchmark mode owns the camera clock, random seed, quality profile, workload markers, and loop reset. Interactive controller input may pause, restart, toggle overlays, or quit, but cannot affect measured camera motion. Audio presentation time never drives simulation or camera progression.

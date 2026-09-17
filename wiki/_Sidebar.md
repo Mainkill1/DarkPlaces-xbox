@@ -5,6 +5,7 @@
 - [Goals and Scope](Port-Goals-and-Scope)
 - [Port Design](Original-Xbox-Port-Design)
 - [Architecture](Architecture)
+- [Xbox Audio Architecture](Xbox-Audio-Architecture)
 - [Build and Toolchain](Build-and-Toolchain)
 - [Renderer Strategy](Renderer-Strategy)
 - [Feature Matrix](Feature-Support-Matrix)
