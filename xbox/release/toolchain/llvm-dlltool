@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+if [ -n "${LLVM_DLLTOOL:-}" ]; then
+	exec "$LLVM_DLLTOOL" "$@"
+fi
+
+for version in 21 20 19 18 17 16 15 14; do
+	if command -v "llvm-dlltool-$version" >/dev/null 2>&1; then
+		exec "llvm-dlltool-$version" "$@"
+	fi
+done
+
+echo "llvm-dlltool not found; install LLVM 14 or newer, or set LLVM_DLLTOOL" >&2
+exit 127

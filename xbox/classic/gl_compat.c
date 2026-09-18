@@ -37,6 +37,20 @@ static void Xbox_glPixelStoref(GLenum pname, GLfloat value)
 	glPixelStorei(pname, (GLint)value);
 }
 
+static void Xbox_glTexParameterfv(GLenum target, GLenum pname, GLfloat *params)
+{
+	if (params)
+		glTexParameterf(target, pname, params[0]);
+}
+
+static void Xbox_glArrayElement(GLint index)
+{
+	/* The production mesh path uses glDrawElements.  pbGL does not implement
+	 * this optional driver-test path, so keep the resolver complete while the
+	 * disabled-by-default diagnostic cvar remains a deliberate no-op. */
+	(void)index;
+}
+
 static void Xbox_glTexCoord1f(GLfloat s)
 {
 	glTexCoord4f(s, 0.f, 0.f, 1.f);
@@ -105,7 +119,7 @@ void *GL_GetProcAddress(const char *name_string)
 	MAP_GL(glFinish); MAP_GL(glFlush); MAP_GL(glClearDepth); MAP_GL(glDepthFunc);
 	MAP_GL(glDepthMask); MAP_GL(glDepthRange); MAP_GL(glDrawElements); MAP_GL(glColorMask);
 	MAP_GL(glVertexPointer); MAP_GL(glNormalPointer); MAP_GL(glColorPointer);
-	MAP_GL(glTexCoordPointer); MAP_GL(glArrayElement); MAP_GL(glColor4f);
+	MAP_GL(glTexCoordPointer); MAP_GL(glColor4f);
 	MAP_GL(glTexCoord2f); MAP_GL(glTexCoord3f); MAP_GL(glTexCoord4f);
 	MAP_GL(glVertex2f); MAP_GL(glVertex3f); MAP_GL(glBegin); MAP_GL(glEnd);
 	MAP_GL(glLineWidth); MAP_GL(glPointSize); MAP_GL(glMatrixMode); MAP_GL(glOrtho);
@@ -115,7 +129,7 @@ void *GL_GetProcAddress(const char *name_string)
 	MAP_GL(glScaled); MAP_GL(glScalef); MAP_GL(glTranslated); MAP_GL(glTranslatef);
 	MAP_GL(glReadPixels); MAP_GL(glStencilFunc); MAP_GL(glStencilMask); MAP_GL(glStencilOp);
 	MAP_GL(glClearStencil); MAP_GL(glTexEnvf); MAP_GL(glTexEnvfv); MAP_GL(glTexEnvi);
-	MAP_GL(glTexParameterf); MAP_GL(glTexParameterfv); MAP_GL(glTexParameteri); MAP_GL(glHint);
+	MAP_GL(glTexParameterf); MAP_GL(glTexParameteri); MAP_GL(glHint);
 	MAP_GL(glPixelStorei); MAP_GL(glGenTextures); MAP_GL(glDeleteTextures); MAP_GL(glBindTexture);
 	MAP_GL(glIsTexture); MAP_GL(glTexImage2D); MAP_GL(glTexSubImage2D);
 	MAP_GL(glCopyTexImage2D); MAP_GL(glCopyTexSubImage2D); MAP_GL(glScissor);
@@ -125,6 +139,8 @@ void *GL_GetProcAddress(const char *name_string)
 	if (!strcmp(name_string, "glReadBuffer")) return (void *)Xbox_glReadBuffer;
 	if (!strcmp(name_string, "glGetDoublev")) return (void *)Xbox_glGetDoublev;
 	if (!strcmp(name_string, "glPixelStoref")) return (void *)Xbox_glPixelStoref;
+	if (!strcmp(name_string, "glTexParameterfv")) return (void *)Xbox_glTexParameterfv;
+	if (!strcmp(name_string, "glArrayElement")) return (void *)Xbox_glArrayElement;
 	if (!strcmp(name_string, "glTexCoord1f")) return (void *)Xbox_glTexCoord1f;
 	if (!strcmp(name_string, "glTexImage1D")) return (void *)Xbox_glTexImage1D;
 	if (!strcmp(name_string, "glTexSubImage1D")) return (void *)Xbox_glTexSubImage1D;

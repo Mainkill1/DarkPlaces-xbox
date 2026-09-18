@@ -88,9 +88,6 @@ def _archive_entries(zf: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, str]]:
         if folded in seen:
             raise StageError(f"archive case/duplicate collision: {name}")
         seen.add(folded)
-        mode = info.external_attr >> 16
-        if stat.S_ISLNK(mode):
-            raise StageError(f"archive symlink is not supported: {name}")
         if info.flag_bits & 1 or info.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
             raise StageError(f"unsupported archive entry: {name}")
         if not info.is_dir():
@@ -177,6 +174,8 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
             for info, name in entries:
                 if info.is_dir() or not name.casefold().startswith(prefix_fold):
                     continue
+                if stat.S_ISLNK(info.external_attr >> 16):
+                    raise StageError(f"archive symlink is not supported: {name}")
                 relative = name[len(prefix):]
                 if not relative:
                     continue

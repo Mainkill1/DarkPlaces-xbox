@@ -44,6 +44,8 @@ Makefile.win
 *.pdb
 *.lib
 *.exp
+__pycache__/
+*.py[cod]
 
 # emscripten
 build-obj/
@@ -75,3 +77,6 @@ wasm/preload/*
 /deps/
 /xbox/classic/build/
 /xbox/release/out/
+
+# Local emulator storage may contain mutable user or console-specific data.
+/xbox/hdd/

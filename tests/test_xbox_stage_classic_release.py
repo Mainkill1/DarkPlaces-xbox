@@ -1,6 +1,7 @@
 import hashlib
 import json
 from pathlib import Path
+import stat
 import sys
 import tempfile
 import unittest
@@ -91,6 +92,38 @@ class ClassicReleaseStagingTests(unittest.TestCase):
                 "Nexuiz/data/data.pk3": b"a",
                 "Nexuiz/data/../outside.cfg": b"bad",
             })
+            with self.assertRaises(stage_classic_release.StageError):
+                stage_classic_release.stage_release(archive, root / "disc", digest)
+
+    def test_stage_ignores_symlink_outside_selected_data_tree(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            archive = root / "nexuiz-252.zip"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+                zf.writestr("Nexuiz/data/data.pk3", b"pk3")
+                symlink = zipfile.ZipInfo("Nexuiz/Nexuiz.app/Contents/MacOS/libogg.dylib")
+                symlink.create_system = 3
+                symlink.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zf.writestr(symlink, b"libogg.0.dylib")
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+
+            identity = stage_classic_release.stage_release(archive, root / "disc", digest)
+
+            self.assertEqual(identity["source_file_count"], 1)
+            self.assertEqual((root / "disc" / "data" / "data.pk3").read_bytes(), b"pk3")
+
+    def test_stage_rejects_symlink_inside_selected_data_tree(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            archive = root / "nexuiz-252.zip"
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as zf:
+                zf.writestr("Nexuiz/data/data.pk3", b"pk3")
+                symlink = zipfile.ZipInfo("Nexuiz/data/config.cfg")
+                symlink.create_system = 3
+                symlink.external_attr = (stat.S_IFLNK | 0o777) << 16
+                zf.writestr(symlink, b"../outside.cfg")
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+
             with self.assertRaises(stage_classic_release.StageError):
                 stage_classic_release.stage_release(archive, root / "disc", digest)
 

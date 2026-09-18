@@ -66,21 +66,39 @@ PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/sys_xbox.c \
 	$(CLASSIC_PORT_DIR)/vid_xbox.c \
 	$(CLASSIC_PORT_DIR)/gl_compat.c \
+	$(CLASSIC_PORT_DIR)/boot_trace_xbox.c \
+	$(CLASSIC_PORT_DIR)/storage_xbox.c \
+	$(CLASSIC_PORT_DIR)/path_xbox.c \
+	$(CLASSIC_PORT_DIR)/network_gate_xbox.c \
+	$(CLASSIC_PORT_DIR)/posix_io.c \
+	$(CLASSIC_PORT_DIR)/dirent_xbox.c \
+	$(CLASSIC_PORT_DIR)/stat_xbox.c \
+	$(CLASSIC_PORT_DIR)/crt_xbox.c \
 	$(CLASSIC_PORT_DIR)/snd_xbox.c \
 	$(CLASSIC_PORT_DIR)/net_xbox.c \
 	$(ROOT_DIR)/xbox/attract_policy.c
 
 SRCS := $(PORT_SRCS) $(ENGINE_SRCS) $(OGG_SRCS) $(VORBIS_SRCS)
 
-CFLAGS += -O2 -fno-strict-aliasing -ffunction-sections -fdata-sections
-CFLAGS += -I$(ENGINE_DIR) -I$(CLASSIC_INCLUDE_DIR) -I$(ROOT_DIR)
-CFLAGS += -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -I$(VORBIS_DIR)/lib
-CFLAGS += -I$(PBGL_DIR)/include
-CFLAGS += -DDP_PLATFORM_XBOX=1 -DXBOX=1 -DCONFIG_MENU=1
-CFLAGS += -DLINK_TO_LIBJPEG=1
-CFLAGS += -D_fseeki64=fseek -D_ftelli64=ftell
-CFLAGS += -DSVNREVISION=\"xbox-nexuiz-252\" -DBUILDTYPE=release
-CFLAGS += -Wno-unused-parameter -Wno-sign-compare -Wno-deprecated-declarations
+DP_CLASSIC_CFLAGS := -O2 -fno-strict-aliasing -ffunction-sections -fdata-sections
+DP_CLASSIC_CFLAGS += -I$(ENGINE_DIR) -I$(CLASSIC_INCLUDE_DIR) -I$(ROOT_DIR)
+DP_CLASSIC_CFLAGS += -include $(CLASSIC_INCLUDE_DIR)/xbox_posix_io.h
+DP_CLASSIC_CFLAGS += -I$(OGG_DIR)/include -I$(VORBIS_DIR)/include -I$(VORBIS_DIR)/lib
+DP_CLASSIC_CFLAGS += -I$(PBGL_DIR)/include
+DP_CLASSIC_CFLAGS += -DDP_PLATFORM_XBOX=1 -DXBOX=1 -DCONFIG_MENU=1
+# The nxdk Clang target advertises MSVC ABI compatibility through _MSC_VER,
+# but the console runtime is PDCLib rather than Microsoft's CRT.  The pinned
+# engine otherwise selects unsupported secure-CRT calls such as _sopen_s and
+# the incompatible MSVC forms of localtime_s/gmtime_s.
+DP_CLASSIC_CFLAGS += -U_MSC_VER
+DP_CLASSIC_CFLAGS += -DLINK_TO_LIBJPEG=1
+DP_CLASSIC_CFLAGS += -D_fseeki64=fseek -D_ftelli64=ftell
+DP_CLASSIC_CFLAGS += -Dstrcasecmp=_stricmp -Dstrncasecmp=_strnicmp
+DP_CLASSIC_CFLAGS += -DSVNREVISION=\"xbox-nexuiz-252\" -DBUILDTYPE=release
+DP_CLASSIC_CFLAGS += -Wno-unused-parameter -Wno-sign-compare -Wno-deprecated-declarations
+
+APP_OBJS := $(SRCS:.c=.obj)
+$(APP_OBJS): CFLAGS += $(DP_CLASSIC_CFLAGS)
 
 # The executable is intentionally large-stack while the port is being brought
 # up. It remains part of the 64 MiB budget and can be tightened after measured

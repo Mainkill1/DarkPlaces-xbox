@@ -15,32 +15,13 @@
 #include <vorbis/vorbisfile.h>
 
 #include "quakedef.h"
+#include "include/xbox_boot_trace.h"
+#include "include/xbox_network.h"
+#include "include/xbox_storage.h"
 
 #define XBOX_BASEDIR "D:/"
 #define XBOX_USERDIR "E:/UDATA/Nexuiz"
-
-static volatile LONG xbox_net_state;
-static HANDLE xbox_net_thread;
-
-static DWORD WINAPI Xbox_NetThread(void *unused)
-{
-	(void)unused;
-	InterlockedExchange(&xbox_net_state, 1);
-	if (nxNetInit(NULL) == 0)
-		InterlockedExchange(&xbox_net_state, 2);
-	else
-		InterlockedExchange(&xbox_net_state, -1);
-	return 0;
-}
-
-static void Xbox_StartNetworkAsync(void)
-{
-	if (InterlockedCompareExchange(&xbox_net_state, 0, 0) != 0)
-		return;
-	xbox_net_thread = CreateThread(NULL, 64 * 1024, Xbox_NetThread, NULL, 0, NULL);
-	if (!xbox_net_thread)
-		InterlockedExchange(&xbox_net_state, -1);
-}
+#define XBOX_BOOT_TRACE "E:\\UDATA\\Nexuiz\\boot-trace.txt"
 
 static void *Xbox_StaticSymbol(const char *name)
 {
@@ -136,13 +117,11 @@ char *Sys_TimeString(const char *timeformat)
 
 void Sys_Shutdown(void)
 {
+	Xbox_BootTraceMark("Sys_Shutdown");
 	fflush(stdout);
 	SDL_Quit();
-	if (xbox_net_thread)
-	{
-		CloseHandle(xbox_net_thread);
-		xbox_net_thread = NULL;
-	}
+	Xbox_ShutdownNetwork();
+	Xbox_BootTraceClose();
 }
 
 void Sys_Error(const char *error, ...)
@@ -153,6 +132,7 @@ void Sys_Error(const char *error, ...)
 	dpvsnprintf(string, sizeof(string), error, argptr);
 	va_end(argptr);
 	debugPrint("NEXUIZ XBOX FATAL: %s\n", string);
+	Xbox_BootTraceMark("FATAL: %s", string);
 	Con_Printf("Nexuiz Xbox fatal: %s\n", string);
 	Host_Shutdown();
 	Sys_Shutdown();
@@ -163,7 +143,10 @@ void Sys_Error(const char *error, ...)
 void Sys_PrintToTerminal(const char *text)
 {
 	if (text && *text)
+	{
+		Xbox_BootTraceWrite(text);
 		debugPrint("%s", text);
+	}
 }
 
 void Sys_Quit(int returnvalue)
@@ -236,6 +219,13 @@ int main(int argc, char **argv)
 
 	XVideoSetMode(640, 480, 32, REFRESH_DEFAULT);
 	debugClearScreen();
+	if (Xbox_MountWritableStorage() == 0)
+	{
+		CreateDirectory("E:\\UDATA", NULL);
+		CreateDirectory("E:\\UDATA\\Nexuiz", NULL);
+		Xbox_BootTraceOpen(XBOX_BOOT_TRACE);
+	}
+	Xbox_BootTraceMark("main entered; debug framebuffer active");
 	debugPrint("Nexuiz Xbox: starting DarkPlaces...\n");
 	debugPrint("Nexuiz Xbox: basedir=D:/ userdir=E:/UDATA/Nexuiz\n");
 
@@ -246,7 +236,9 @@ int main(int argc, char **argv)
 	com_argc = 13;
 	com_argv = (const char **)xargv;
 	SDL_Init(0);
+	Xbox_BootTraceMark("SDL base initialized; scheduling nxdk network");
 	Xbox_StartNetworkAsync();
+	Xbox_BootTraceMark("entering Host_Main");
 	Host_Main();
 	return 0;
 }

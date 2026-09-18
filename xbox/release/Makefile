@@ -23,6 +23,7 @@ ENGINE_DIR := $(DEPS_DIR)/darkplaces-classic
 PBGL_DIR := $(DEPS_DIR)/pbgl
 OGG_DIR := $(DEPS_DIR)/ogg
 VORBIS_DIR := $(DEPS_DIR)/vorbis
+HOST_TOOLS_DIR := $(CURDIR)/toolchain
 NEXUIZ_ARCHIVE ?= $(DEPS_DIR)/nexuiz-252.zip
 DISC_DIR := $(CLASSIC_DIR)/build/disc
 XBE := $(DISC_DIR)/default.xbe
@@ -37,6 +38,8 @@ COMMON_VARS := \
 	PBGL_DIR="$(PBGL_DIR)" \
 	OGG_DIR="$(OGG_DIR)" \
 	VORBIS_DIR="$(VORBIS_DIR)"
+
+export PATH := $(HOST_TOOLS_DIR):$(PATH)
 
 .PHONY: help bootstrap deps content preflight stage identity engine xbe verify-tree xiso verify-xiso package all clean clean-output
 

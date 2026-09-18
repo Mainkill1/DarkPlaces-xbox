@@ -9,6 +9,8 @@
 
 #include "quakedef.h"
 #include "../attract_policy.h"
+#include "include/xbox_boot_trace.h"
+#include "include/xbox_network.h"
 
 int cl_available = true;
 qboolean vid_supportrefreshrate = false;
@@ -38,6 +40,7 @@ cvar_t joy_sensitivityroll = {0, "joy_sensitivityroll", "1", "unused"};
 static SDL_GameController *controller;
 static unsigned char oldbuttons[16];
 static qboolean pbgl_started;
+static qboolean first_swap_traced;
 static dp_button_gate_t attract_button_gate;
 static qboolean attract_consume_until_release;
 static qboolean attract_manual_stop;
@@ -167,6 +170,12 @@ void Sys_SendKeyEvents(void)
 	int32_t instance;
 	uint32_t buttonmask, pressed;
 	qboolean lt, rt;
+	if (Xbox_NetworkTakeReadyRetry())
+	{
+		Con_Print("Xbox network ready; reopening client sockets\n");
+		NetConn_CloseClientPorts();
+		NetConn_OpenClientPorts();
+	}
 	while (SDL_PollEvent(&event))
 	{
 		if (event.type == SDL_CONTROLLERDEVICEADDED || event.type == SDL_CONTROLLERDEVICEREMOVED)
@@ -255,6 +264,7 @@ void VID_SetMouse(qboolean fullscreengrab, qboolean relative, qboolean hidecurso
 
 void VID_Init(void)
 {
+	Xbox_BootTraceMark("VID_Init enter");
 	Cvar_RegisterVariable(&joy_detected);
 	Cvar_RegisterVariable(&joy_enable);
 	Cvar_RegisterVariable(&joy_index);
@@ -279,29 +289,41 @@ void VID_Init(void)
 	if (SDL_InitSubSystem(SDL_INIT_EVENTS | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER) < 0)
 		Con_Printf("SDL controller init failed: %s\n", SDL_GetError());
 	Xbox_OpenController();
+	Xbox_BootTraceMark("VID_Init complete");
 }
 
 int VID_InitMode(int fullscreen, int *width, int *height, int bpp, int refreshrate, int stereobuffer, int samples)
 {
+	int pbgl_result;
+
 	(void)fullscreen; (void)bpp; (void)refreshrate; (void)stereobuffer; (void)samples;
+	Xbox_BootTraceMark("VID_InitMode enter");
 	*width = 640;
 	*height = 480;
+	Xbox_BootTraceMark("XVideoSetMode begin");
 	if (!XVideoSetMode(640, 480, 32, REFRESH_DEFAULT))
 	{
+		Xbox_BootTraceMark("XVideoSetMode failed");
 		Con_Print("XVideoSetMode failed\n");
 		return false;
 	}
+	Xbox_BootTraceMark("XVideoSetMode complete");
 	if (!pbgl_started)
 	{
-		pbgl_init(GL_TRUE);
+		Xbox_BootTraceMark("pbgl_init begin");
+		pbgl_result = pbgl_init(GL_TRUE);
+		Xbox_BootTraceMark("pbgl_init returned %d", pbgl_result);
 		pbgl_started = true;
 	}
 	gl_platform = "pbGL/NV2A";
 	gl_platformextensions = "";
 	gl_videosyncavailable = false;
+	Xbox_BootTraceMark("GL_Init begin");
 	GL_Init();
+	Xbox_BootTraceMark("GL_Init complete");
 	vid_hidden = false;
 	vid_activewindow = true;
+	Xbox_BootTraceMark("VID_InitMode complete");
 	return true;
 }
 
@@ -343,9 +365,16 @@ void VID_Finish(void)
 	vid_activewindow = true;
 	if (r_render.integer)
 	{
+		if (!first_swap_traced)
+			Xbox_BootTraceMark("first pbgl_swap_buffers begin");
 		if (r_speeds.integer == 2 || gl_finish.integer)
 			qglFinish();
 		pbgl_swap_buffers();
+		if (!first_swap_traced)
+		{
+			first_swap_traced = true;
+			Xbox_BootTraceMark("first pbgl_swap_buffers complete");
+		}
 	}
 }
 
