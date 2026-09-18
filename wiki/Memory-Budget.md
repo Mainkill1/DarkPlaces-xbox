@@ -26,6 +26,28 @@ These are planning caps, not measured truth. The allocator telemetry issue must 
 
 The categories share physical memory; the table is a control mechanism for content and cache decisions, not a claim that each subsystem receives a separate heap.
 
+## Classic candidate static-image gate
+
+The first stock-memory boot trace reached `GL_Init complete` and then failed its
+first texture-management allocation. Inspection found that the linked PE image
+reserved 35,090,432 bytes, dominated by desktop-scale fixed arrays.
+
+The canonical classic build now materializes Xbox-only limits without modifying
+the immutable engine checkout:
+
+| Limit | Pinned engine | Xbox classic candidate |
+|---|---:|---:|
+| Client/server entities | 32,768 | 8,192 |
+| Models | 8,192 | 2,048 |
+| Sounds | 4,096 | 2,048 |
+| Server-browser entries | 2,048 | 256 |
+
+The resulting PE `SizeOfImage` is 21,524,480 bytes, reclaiming 13,565,952 bytes
+before runtime heap and GPU allocation. `xbox/release` rejects a classic PE over
+24 MiB. This is a static-footprint gate, not proof of the complete 64 MiB runtime
+gate; map loading, offline play, LAN hosting, transitions, and soak still require
+measured high-water evidence.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

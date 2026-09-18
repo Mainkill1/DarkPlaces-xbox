@@ -47,6 +47,9 @@ ENGINE_COMMON := \
 
 ENGINE_SOUND := snd_main.c snd_mem.c snd_mix.c snd_ogg.c snd_wav.c snd_modplug.c
 PATCHED_FS := $(CLASSIC_PORT_DIR)/build/generated/fs_xbox.c
+MEMORY_HEADER_DIR := $(CLASSIC_PORT_DIR)/build/generated/memory
+PATCHED_QUAKEDEF := $(MEMORY_HEADER_DIR)/quakedef_xbox.h
+PATCHED_NETCONN := $(MEMORY_HEADER_DIR)/netconn_xbox.h
 ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c) $(PATCHED_FS)
 
 # Do not wildcard third-party codec directories. The release lock pins exact
@@ -105,7 +108,12 @@ DP_CLASSIC_CFLAGS += -DSVNREVISION=\"xbox-nexuiz-252\" -DBUILDTYPE=release
 DP_CLASSIC_CFLAGS += -Wno-unused-parameter -Wno-sign-compare -Wno-deprecated-declarations
 
 APP_OBJS := $(SRCS:.c=.obj)
+ENGINE_OBJS := $(ENGINE_SRCS:.c=.obj)
+MEMORY_PROFILE_OBJS := $(filter-out $(ENGINE_DIR)/builddate.obj,$(ENGINE_OBJS)) \
+	$(CLASSIC_PORT_DIR)/vid_xbox.obj
 $(APP_OBJS): CFLAGS += $(DP_CLASSIC_CFLAGS)
+$(MEMORY_PROFILE_OBJS): CFLAGS += -include $(PATCHED_QUAKEDEF)
+$(MEMORY_PROFILE_OBJS): $(PATCHED_QUAKEDEF) $(PATCHED_NETCONN)
 
 # The executable is intentionally large-stack while the port is being brought
 # up. It remains part of the 64 MiB budget and can be tightened after measured
@@ -126,6 +134,21 @@ $(VORBIS_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC -Dalloca=__builtin_alloca
 $(PATCHED_FS): $(ENGINE_DIR)/fs.c $(ROOT_DIR)/tools/xbox/patch_classic_fs.py
 	@mkdir -p "$(dir $@)"
 	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_fs.py" "$<" "$@"
+
+$(PATCHED_QUAKEDEF): $(ENGINE_DIR)/quakedef.h $(ENGINE_DIR)/netconn.h $(ROOT_DIR)/tools/xbox/patch_classic_memory_headers.py
+	@mkdir -p "$(MEMORY_HEADER_DIR)"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_memory_headers.py" \
+		"$(ENGINE_DIR)/quakedef.h" "$(ENGINE_DIR)/netconn.h" "$(MEMORY_HEADER_DIR)"
+
+# The generator writes both headers atomically. Keep the second output
+# recoverable when it alone is removed without requiring GNU make grouped
+# targets (introduced in 4.3).
+$(PATCHED_NETCONN): $(PATCHED_QUAKEDEF)
+	@test -f "$@" || { \
+		mkdir -p "$(MEMORY_HEADER_DIR)"; \
+		$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_memory_headers.py" \
+			"$(ENGINE_DIR)/quakedef.h" "$(ENGINE_DIR)/netconn.h" "$(MEMORY_HEADER_DIR)"; \
+	}
 
 .PHONY: print-pins
 print-pins:

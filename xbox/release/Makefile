@@ -150,6 +150,7 @@ identity: stage
 engine: preflight
 	@echo "[ ENGINE   ] Nexuiz-era DarkPlaces + Xbox platform backend"
 	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 main.exe $(COMMON_VARS)
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/verify_xbox_pe_memory.py" "$(CLASSIC_DIR)/main.exe"
 
 # Build only the executable container here. The generic nxdk `all` target also
 # owns GEN_XISO and only tracks default.xbe as an XISO prerequisite, which is not
