@@ -131,6 +131,17 @@ decoded BGRA buffers create a distinct later transient peak; that boundary is
 not claimed solved here. This remains a source/build gate pending a
 stock-64-MiB runtime trace.
 
+The 2026-09-18 64 MiB run confirmed those controls were applied and advanced
+past the prior `eXmetalBase02.tga` inflater failure. It then stopped without an
+engine or allocator fatal immediately after the `Strength` server message,
+before the existing trace identified the client world-load phase. The Xbox GL
+upload boundary now records durable before/after base-level upload markers,
+dimensions, and available pages. Diagnostic staging also enables the engine's
+per-model loading output and the persistent
+`E:/UDATA/Nexuiz/data/textures.log`. These are evidence
+gathering changes: they do not establish that the later BSP/lightmap boundary
+fits in 64 MiB.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

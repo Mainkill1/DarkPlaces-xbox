@@ -10,5 +10,7 @@ const xbox_memory_policy_t *Xbox_MemoryProfilePolicy(void);
 void Xbox_MemoryProfileRegisterCommands(void);
 void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 	int64_t actual);
+void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
+	int level, int width, int height);
 
 #endif

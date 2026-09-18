@@ -29,11 +29,33 @@ static GLenum seen_format;
 static GLenum seen_type;
 static const GLvoid *seen_pointer;
 static unsigned char seen_pixels[32];
+static unsigned int trace_count;
+static char trace_operation[2][16];
+static char trace_phase[2][16];
+static int trace_level[2];
+static int trace_width[2];
+static int trace_height[2];
+static int expect_upload_between_markers;
+
+void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
+    int level, int width, int height)
+{
+    if (trace_count < 2) {
+        strcpy(trace_operation[trace_count], operation);
+        strcpy(trace_phase[trace_count], phase);
+        trace_level[trace_count] = level;
+        trace_width[trace_count] = width;
+        trace_height[trace_count] = height;
+    }
+    ++trace_count;
+}
 
 static void CaptureImage(GLenum target, GLint level, GLint internalformat,
     GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type,
     const GLvoid *pixels)
 {
+    if (expect_upload_between_markers)
+        assert(trace_count == 1);
     seen_target = target;
     seen_level = level;
     seen_internal = internalformat;
@@ -51,8 +73,11 @@ static void CaptureSubImage(GLenum target, GLint level, GLint xoffset,
     GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type,
     const GLvoid *pixels)
 {
+    if (expect_upload_between_markers)
+        assert(trace_count == 1);
     seen_x = xoffset;
     seen_y = yoffset;
+    expect_upload_between_markers = 0;
     CaptureImage(target, level, 0, width, height, 0, format, type, pixels);
 }
 
@@ -69,20 +94,44 @@ int main(void)
     unsigned char original[sizeof(bgra)];
     memcpy(original, bgra, sizeof(bgra));
 
-    Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 3, GL_RGBA8,
+    expect_upload_between_markers = 1;
+    Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA8,
         2, 2, 0, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
-    assert(seen_target == GL_TEXTURE_2D && seen_level == 3);
+    expect_upload_between_markers = 0;
+    assert(seen_target == GL_TEXTURE_2D && seen_level == 0);
     assert(seen_internal == GL_RGBA8 && seen_width == 2 && seen_height == 2);
     assert(seen_border == 0 && seen_format == GL_RGBA && seen_type == GL_UNSIGNED_BYTE);
     assert(memcmp(seen_pixels, rgba, sizeof(rgba)) == 0);
     assert(memcmp(bgra, original, sizeof(bgra)) == 0);
     assert(seen_pointer != bgra);
+    assert(trace_count == 2);
+    assert(strcmp(trace_operation[0], "image2d") == 0);
+    assert(strcmp(trace_operation[1], "image2d") == 0);
+    assert(strcmp(trace_phase[0], "before") == 0);
+    assert(strcmp(trace_phase[1], "after") == 0);
+    assert(trace_level[0] == 0 && trace_width[0] == 2 && trace_height[0] == 2);
+    assert(trace_level[1] == 0 && trace_width[1] == 2 && trace_height[1] == 2);
 
-    Xbox_GLTexSubImage2D(CaptureSubImage, GL_TEXTURE_2D, 2, 7, 9,
+    trace_count = 0;
+    expect_upload_between_markers = 1;
+    Xbox_GLTexSubImage2D(CaptureSubImage, GL_TEXTURE_2D, 0, 7, 9,
         2, 2, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
-    assert(seen_level == 2 && seen_x == 7 && seen_y == 9);
+    expect_upload_between_markers = 0;
+    assert(seen_level == 0 && seen_x == 7 && seen_y == 9);
     assert(seen_format == GL_RGBA);
     assert(memcmp(seen_pixels, rgba, sizeof(rgba)) == 0);
+    assert(trace_count == 2);
+    assert(strcmp(trace_operation[0], "subimage2d") == 0);
+    assert(strcmp(trace_operation[1], "subimage2d") == 0);
+    assert(strcmp(trace_phase[0], "before") == 0);
+    assert(strcmp(trace_phase[1], "after") == 0);
+    assert(trace_level[0] == 0 && trace_width[0] == 2 && trace_height[0] == 2);
+    assert(trace_level[1] == 0 && trace_width[1] == 2 && trace_height[1] == 2);
+
+    trace_count = 0;
+    Xbox_GLTexSubImage2D(CaptureSubImage, GL_TEXTURE_2D, 2, 7, 9,
+        2, 2, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
+    assert(trace_count == 0);
 
     Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA,
         4, 4, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);

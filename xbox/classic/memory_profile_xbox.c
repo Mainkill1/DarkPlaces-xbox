@@ -115,6 +115,23 @@ void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 			path ? path : "(null)", (long long)expected, (long long)actual);
 }
 
+void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
+	int level, int width, int height)
+{
+	uint64_t total_bytes, available_bytes;
+	if (Xbox_MemorySnapshot(&total_bytes, &available_bytes))
+		Xbox_BootTraceMark(
+			"Xbox texture upload operation=%s phase=%s level=%d size=%dx%d "
+			"available_pages=%llu",
+			operation, phase, level, width, height,
+			(unsigned long long)(available_bytes / PAGE_SIZE));
+	else
+		Xbox_BootTraceMark(
+			"Xbox texture upload operation=%s phase=%s level=%d size=%dx%d "
+			"available=unavailable",
+			operation, phase, level, width, height);
+}
+
 static int Xbox_MemoryReadRuntimeValues(xbox_memory_runtime_values_t *values,
 	cvar_t **variables)
 {
