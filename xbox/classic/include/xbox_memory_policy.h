@@ -29,6 +29,7 @@ typedef struct xbox_memory_runtime_values_s
 {
 	int gl_max_size;
 	int gl_picmip;
+	int r_picmipworld;
 	int r_precachetextures;
 	int snd_precache;
 	int snd_streaming;

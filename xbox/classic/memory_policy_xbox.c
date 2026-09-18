@@ -66,8 +66,10 @@ void Xbox_MemoryPolicyClamp(const xbox_memory_policy_t *policy,
 		values->gl_max_size = 1024;
 	if (values->gl_picmip < 1)
 		values->gl_picmip = 1;
-	if (values->r_precachetextures > 0)
-		values->r_precachetextures = 0;
+	if (values->r_picmipworld < 1)
+		values->r_picmipworld = 1;
+	if (values->r_precachetextures != 1)
+		values->r_precachetextures = 1;
 	if (values->snd_precache > 0)
 		values->snd_precache = 0;
 	if (values->snd_streaming < 1)

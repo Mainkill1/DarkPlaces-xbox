@@ -119,8 +119,8 @@ static int Xbox_MemoryReadRuntimeValues(xbox_memory_runtime_values_t *values,
 	cvar_t **variables)
 {
 	static const char *names[] = {
-		"gl_max_size", "gl_picmip", "r_precachetextures",
-		"snd_precache", "snd_streaming"
+		"gl_max_size", "gl_picmip", "r_picmipworld",
+		"r_precachetextures", "snd_precache", "snd_streaming"
 	};
 	size_t i;
 	for (i = 0; i < sizeof(names) / sizeof(names[0]); ++i)
@@ -134,9 +134,10 @@ static int Xbox_MemoryReadRuntimeValues(xbox_memory_runtime_values_t *values,
 	}
 	values->gl_max_size = variables[0]->integer;
 	values->gl_picmip = variables[1]->integer;
-	values->r_precachetextures = variables[2]->integer;
-	values->snd_precache = variables[3]->integer;
-	values->snd_streaming = variables[4]->integer;
+	values->r_picmipworld = variables[2]->integer;
+	values->r_precachetextures = variables[3]->integer;
+	values->snd_precache = variables[4]->integer;
+	values->snd_streaming = variables[5]->integer;
 	return 1;
 }
 
@@ -144,7 +145,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 {
 	xbox_memory_runtime_values_t before, after, retail_values;
 	xbox_memory_policy_t retail_policy;
-	cvar_t *variables[5];
+	cvar_t *variables[6];
 	uint64_t total_bytes, available_bytes;
 	unsigned int retail_violations = 0;
 	int snapshot_available;
@@ -156,6 +157,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 	Xbox_MemoryPolicyClamp(&retail_policy, &retail_values);
 	retail_violations += retail_values.gl_max_size != before.gl_max_size;
 	retail_violations += retail_values.gl_picmip != before.gl_picmip;
+	retail_violations += retail_values.r_picmipworld != before.r_picmipworld;
 	retail_violations +=
 		retail_values.r_precachetextures != before.r_precachetextures;
 	retail_violations += retail_values.snd_precache != before.snd_precache;
@@ -166,23 +168,27 @@ static void Xbox_ApplyMemoryProfile_f(void)
 		Cvar_SetValueQuick(variables[0], (float)after.gl_max_size);
 	if (after.gl_picmip != before.gl_picmip)
 		Cvar_SetValueQuick(variables[1], (float)after.gl_picmip);
+	if (after.r_picmipworld != before.r_picmipworld)
+		Cvar_SetValueQuick(variables[2], (float)after.r_picmipworld);
 	if (after.r_precachetextures != before.r_precachetextures)
-		Cvar_SetValueQuick(variables[2], (float)after.r_precachetextures);
+		Cvar_SetValueQuick(variables[3], (float)after.r_precachetextures);
 	if (after.snd_precache != before.snd_precache)
-		Cvar_SetValueQuick(variables[3], (float)after.snd_precache);
+		Cvar_SetValueQuick(variables[4], (float)after.snd_precache);
 	if (after.snd_streaming != before.snd_streaming)
-		Cvar_SetValueQuick(variables[4], (float)after.snd_streaming);
+		Cvar_SetValueQuick(variables[5], (float)after.snd_streaming);
 	snapshot_available = Xbox_MemorySnapshot(&total_bytes, &available_bytes);
 	if (snapshot_available)
 		Xbox_BootTraceMark(
 			"Xbox memory applied profile=%s available=%llu MiB "
 			"gl_max_size=%d->%d gl_picmip=%d->%d "
+			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
 			"sound_streaming=%d->%d retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			(unsigned long long)(available_bytes / XBOX_MIB),
 			before.gl_max_size, after.gl_max_size,
 			before.gl_picmip, after.gl_picmip,
+			before.r_picmipworld, after.r_picmipworld,
 			before.r_precachetextures, after.r_precachetextures,
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,
@@ -193,11 +199,13 @@ static void Xbox_ApplyMemoryProfile_f(void)
 		Xbox_BootTraceMark(
 			"Xbox memory applied profile=%s available=unavailable "
 			"gl_max_size=%d->%d gl_picmip=%d->%d "
+			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
 			"sound_streaming=%d->%d retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			before.gl_max_size, after.gl_max_size,
 			before.gl_picmip, after.gl_picmip,
+			before.r_picmipworld, after.r_picmipworld,
 			before.r_precachetextures, after.r_precachetextures,
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,

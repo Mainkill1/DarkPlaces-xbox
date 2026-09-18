@@ -80,23 +80,27 @@ physical memory.
 
 The structural limits in the preceding table stay identical for all profiles;
 they determine static array and executable size. After saved configuration is
-loaded and before autoplay begins, `retail64` and `xemu64` only tighten values
-that exceed their ceilings:
+loaded and before autoplay begins, `retail64` and `xemu64` apply these bounded
+settings:
 
-| Runtime control | Retail/xemu64 ceiling |
+| Runtime control | Retail/xemu64 setting |
 |---|---:|
 | `gl_max_size` | 1024 maximum |
 | `gl_picmip` | 1 minimum |
-| `r_precachetextures` | 0 maximum |
+| `r_picmipworld` | 1 minimum |
+| `r_precachetextures` | exactly 1 |
 | `snd_precache` | 0 maximum |
 | `snd_streaming` | 1 minimum |
 
-More conservative saved graphics choices are preserved. `dev128` does not
-replace user choices and can benefit from its larger normal heap, but the
+Other more conservative saved graphics choices are preserved. Texture
+precache is the deliberate exception: in this engine, zero retains each
+full-resolution source image until first use, while one uploads map textures
+at their reduced Xbox size and immediately frees the source copy. `dev128`
+does not replace user choices and can benefit from its larger normal heap, but the
 current classic renderer still lacks the complete arena/cache/eviction ledger
 needed to quantify retail-equivalent violations. A `dev128` run is therefore
 reported as diagnostic-only, never as 64 MiB acceptance. The trace reports
-before/after values and a `retail64_ceiling_violations` count for the five
+before/after values and a `retail64_ceiling_violations` count for the six
 controls above; that count is not a substitute for the still-missing complete
 runtime allocation ledger.
 
@@ -112,6 +116,20 @@ current available physical page count. Both staged PK3 files also pass complete
 `unzip -tq` validation, isolating the failure to the runtime read/decompression
 boundary rather than the packaged payload. This is a source/build gate until
 another xemu run shows the next runtime boundary.
+
+The next 64 MiB trace reached the guarded failure path and established the
+actual resource boundary: loading `textures/eX/eXmetalBase02.tga` returned
+`Z_MEM_ERROR` with only five physical pages available. Q3 world materials are
+loaded before external lightmaps, and mode 0 caused each already-decoded
+`TEXF_PRECACHE` material to retain its full-resolution `inputtexels` copy for
+delayed upload. The retail policy now selects mode 1 so each material is
+uploaded and its source copy freed during loading. It also enforces
+`r_picmipworld=1`, ensuring that upload uses the bounded `gl_picmip` and
+`gl_max_size` path even if saved configuration disabled world picmip.
+`strength` then has 28 separate 786,450-byte external lightmap files whose
+decoded BGRA buffers create a distinct later transient peak; that boundary is
+not claimed solved here. This remains a source/build gate pending a
+stock-64-MiB runtime trace.
 
 ## Required instrumentation
 

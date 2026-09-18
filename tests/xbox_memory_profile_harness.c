@@ -24,6 +24,7 @@ static void (*registered_command)(void);
 static cvar_t cvars[] = {
 	{0, "gl_max_size", "2048", "", 2048, 2048.0f},
 	{0, "gl_picmip", "0", "", 0, 0.0f},
+	{0, "r_picmipworld", "0", "", 0, 0.0f},
 	{0, "r_precachetextures", "2", "", 2, 2.0f},
 	{0, "snd_precache", "1", "", 1, 1.0f},
 	{0, "snd_streaming", "0", "", 0, 0.0f},
@@ -91,9 +92,10 @@ static void reset(uint64_t total_mib, uint64_t available_mib)
 	registered_command = NULL;
 	cvars[0].integer = 2048;
 	cvars[1].integer = 0;
-	cvars[2].integer = 2;
-	cvars[3].integer = 1;
-	cvars[4].integer = 0;
+	cvars[2].integer = 0;
+	cvars[3].integer = 2;
+	cvars[4].integer = 1;
+	cvars[5].integer = 0;
 }
 
 static void write_token(const char *path, const char *token)
@@ -128,16 +130,18 @@ int main(int argc, char **argv)
 	registered_command();
 	assert(cvars[0].integer == 1024);
 	assert(cvars[1].integer == 1);
-	assert(cvars[2].integer == 0);
-	assert(cvars[3].integer == 0);
-	assert(cvars[4].integer == 1);
+	assert(cvars[2].integer == 1);
+	assert(cvars[3].integer == 1);
+	assert(cvars[4].integer == 0);
+	assert(cvars[5].integer == 1);
 	assert(strstr(trace_text, "applied profile=retail64"));
 	assert(strstr(trace_text, "gl_max_size=2048->1024"));
 	assert(strstr(trace_text, "gl_picmip=0->1"));
-	assert(strstr(trace_text, "texture_precache=2->0"));
+	assert(strstr(trace_text, "picmip_world=0->1"));
+	assert(strstr(trace_text, "texture_precache=2->1"));
 	assert(strstr(trace_text, "sound_precache=1->0"));
 	assert(strstr(trace_text, "sound_streaming=0->1"));
-	assert(strstr(trace_text, "retail64_ceiling_violations=5"));
+	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
 
 	reset(128, 82);
 	assert(Xbox_MemoryProfileInitialize(path));
@@ -146,12 +150,13 @@ int main(int argc, char **argv)
 	registered_command();
 	assert(cvars[0].integer == 2048);
 	assert(cvars[1].integer == 0);
-	assert(cvars[2].integer == 2);
-	assert(cvars[3].integer == 1);
-	assert(cvars[4].integer == 0);
+	assert(cvars[2].integer == 0);
+	assert(cvars[3].integer == 2);
+	assert(cvars[4].integer == 1);
+	assert(cvars[5].integer == 0);
 	assert(strstr(trace_text, "diagnostic-only"));
 	assert(strstr(trace_text, "gl_max_size=2048->2048"));
-	assert(strstr(trace_text, "retail64_ceiling_violations=5"));
+	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
 
 	remove(path);
 	reset(64, 18);
