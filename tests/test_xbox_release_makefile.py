@@ -19,6 +19,7 @@ class XboxReleaseMakefileTests(unittest.TestCase):
         self.assertIn("bootstrap", proc.stdout)
         self.assertIn("preflight", proc.stdout)
         self.assertIn("stage", proc.stdout)
+        self.assertIn("deterministic stock-64 texture override", proc.stdout)
         self.assertIn("engine", proc.stdout)
         self.assertIn("package", proc.stdout)
 

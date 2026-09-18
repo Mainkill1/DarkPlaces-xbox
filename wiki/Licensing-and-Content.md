@@ -59,6 +59,15 @@ The generated `CONTENT-IDENTITY.json` records:
 - total staged bytes;
 - path, byte size and SHA-256 for every staged file.
 
+For the stock-memory candidate, staging additionally creates
+`zzzz-xbox-lowmem.pk3` from effective TGA assets larger than 512 pixels on
+either axis. The derived pack is deterministic and records source/output hashes
+and dimensions in its embedded manifest; `CONTENT-IDENTITY.json` records the
+final pack hash. The source PK3s are not edited. This local engineering
+derivative is subject to the same source attribution and redistribution audit
+as its inputs and must not be committed as a substitute for the external
+archive.
+
 Xbox startup defaults are generated separately as `xbox-defaults.cfg`. If the
 original package contains `autoexec.cfg`, its existing contents are preserved and
 an `exec xbox-defaults.cfg` line is appended rather than replacing game startup

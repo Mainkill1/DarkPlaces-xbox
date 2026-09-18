@@ -68,16 +68,37 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
         raise ReleaseTreeError(f"cannot read content identity: {exc}") from exc
     expected = {
         "schema_version", "release", "source_file", "source_sha256", "data_prefix",
-        "source_file_count", "staged_file_count", "staged_bytes", "files",
+        "source_file_count", "staged_file_count", "staged_bytes", "derived_content", "files",
     }
     if not isinstance(identity, dict) or set(identity) != expected:
         raise ReleaseTreeError("CONTENT-IDENTITY.json has an unexpected schema")
-    if identity["schema_version"] != 1 or identity["release"] != RELEASE:
+    if identity["schema_version"] != 2 or identity["release"] != RELEASE:
         raise ReleaseTreeError("CONTENT-IDENTITY.json has the wrong release identity")
     if not isinstance(identity["source_sha256"], str) or not HEX64.fullmatch(identity["source_sha256"]):
         raise ReleaseTreeError("CONTENT-IDENTITY.json source SHA-256 is malformed")
     if not isinstance(identity["files"], list) or not identity["files"]:
         raise ReleaseTreeError("CONTENT-IDENTITY.json contains no staged files")
+    derived = identity["derived_content"]
+    derived_keys = {
+        "path", "profile", "max_dimension", "filter", "entry_storage",
+        "asset_count", "bytes", "sha256",
+    }
+    if not isinstance(derived, dict) or set(derived) != derived_keys:
+        raise ReleaseTreeError("derived content identity has an unexpected schema")
+    if (
+        derived["path"] != "data/zzzz-xbox-lowmem.pk3"
+        or derived["profile"] != "stock64"
+        or derived["max_dimension"] != 512
+        or derived["filter"] != "repeated-2x2-box-premultiplied-alpha"
+        or derived["entry_storage"] != "stored"
+        or type(derived["asset_count"]) is not int
+        or derived["asset_count"] < 0
+        or type(derived["bytes"]) is not int
+        or derived["bytes"] <= 0
+        or not isinstance(derived["sha256"], str)
+        or not HEX64.fullmatch(derived["sha256"])
+    ):
+        raise ReleaseTreeError("derived content identity is malformed")
     return identity
 
 
@@ -166,6 +187,10 @@ def verify_tree(disc: Path) -> dict[str, int]:
 
     if identity["staged_file_count"] != len(declared) or identity["staged_bytes"] != declared_bytes:
         raise ReleaseTreeError("content identity totals do not reconcile")
+    derived = identity["derived_content"]
+    derived_record = declared.get(derived["path"])
+    if derived_record != (derived["bytes"], derived["sha256"]):
+        raise ReleaseTreeError("derived content does not match its staged file record")
     pk3_files = sum(1 for name in declared if name.lower().endswith(".pk3"))
     if pk3_files < 1:
         raise ReleaseTreeError("release tree contains no Nexuiz PK3 files")

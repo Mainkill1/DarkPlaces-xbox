@@ -12,6 +12,7 @@ import stat
 import sys
 import zipfile
 
+import build_lowmem_texture_pack
 import release_inputs
 
 CHUNK = 1024 * 1024
@@ -58,6 +59,8 @@ alias xbox_demo_start "startdemos demos/bench1 demos/demo1 demos/demo2 demos/dem
 xbox_demo_start
 """
 AUTOEXEC_LINE = "exec xbox-defaults.cfg"
+LOWMEM_PACK_NAME = "zzzz-xbox-lowmem.pk3"
+LOWMEM_MAX_DIMENSION = 512
 
 
 class StageError(ValueError):
@@ -199,6 +202,18 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
     except (OSError, UnicodeError) as exc:
         raise StageError(f"cannot write Xbox defaults: {exc}") from exc
 
+    lowmem_pack = data_dir / LOWMEM_PACK_NAME
+    source_packs = sorted(
+        (path for path in data_dir.glob("*.pk3") if path.name != LOWMEM_PACK_NAME),
+        key=lambda path: path.name.casefold(),
+    )
+    try:
+        lowmem_manifest = build_lowmem_texture_pack.build_pack(
+            source_packs, lowmem_pack, LOWMEM_MAX_DIMENSION
+        )
+    except build_lowmem_texture_pack.TexturePackError as exc:
+        raise StageError(f"cannot generate low-memory texture pack: {exc}") from exc
+
     files = []
     total = 0
     for path in sorted(p for p in data_dir.rglob("*") if p.is_file()):
@@ -208,7 +223,7 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
         files.append({"path": relative, "bytes": size, "sha256": _sha256(path)})
 
     identity = {
-        "schema_version": 1,
+        "schema_version": 2,
         "release": "nexuiz-xbox-2.5.2",
         "source_file": archive.name,
         "source_sha256": release_inputs.file_sha256(archive),
@@ -216,6 +231,16 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
         "source_file_count": staged_source,
         "staged_file_count": len(files),
         "staged_bytes": total,
+        "derived_content": {
+            "path": f"data/{LOWMEM_PACK_NAME}",
+            "profile": lowmem_manifest["profile"],
+            "max_dimension": lowmem_manifest["max_dimension"],
+            "filter": lowmem_manifest["filter"],
+            "entry_storage": lowmem_manifest["entry_storage"],
+            "asset_count": lowmem_manifest["asset_count"],
+            "bytes": lowmem_pack.stat().st_size,
+            "sha256": _sha256(lowmem_pack),
+        },
         "files": files,
     }
     identity_path.write_text(

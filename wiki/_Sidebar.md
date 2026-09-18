@@ -9,6 +9,7 @@
 - [Renderer Strategy](Renderer-Strategy)
 - [Feature Matrix](Feature-Support-Matrix)
 - [Memory Budget](Memory-Budget)
+- [Low-Memory Material Downscaling](Low-Memory-Material-Downscaling)
 - [Nexuiz Stress World](Nexuiz-Stress-World)
 - [Validation and Telemetry](Validation-and-Telemetry)
 - [Roadmap](Porting-Roadmap)

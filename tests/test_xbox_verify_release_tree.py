@@ -26,6 +26,7 @@ def make_disc(root: Path) -> Path:
     data.mkdir(parents=True)
     files = {
         "data/data20091001.pk3": b"PK3!",
+        "data/zzzz-xbox-lowmem.pk3": b"DERIVED!",
         "data/autoexec.cfg": b"exec xbox-defaults.cfg\n",
         "data/xbox-defaults.cfg": b"joy_enable 1\n",
     }
@@ -39,7 +40,7 @@ def make_disc(root: Path) -> Path:
             "sha256": hashlib.sha256(payload).hexdigest(),
         })
     identity = {
-        "schema_version": 1,
+        "schema_version": 2,
         "release": "nexuiz-xbox-2.5.2",
         "source_file": "nexuiz-252.zip",
         "source_sha256": "a" * 64,
@@ -47,6 +48,16 @@ def make_disc(root: Path) -> Path:
         "source_file_count": len(files),
         "staged_file_count": len(files),
         "staged_bytes": sum(len(v) for v in files.values()),
+        "derived_content": {
+            "path": "data/zzzz-xbox-lowmem.pk3",
+            "profile": "stock64",
+            "max_dimension": 512,
+            "filter": "repeated-2x2-box-premultiplied-alpha",
+            "entry_storage": "stored",
+            "asset_count": 121,
+            "bytes": len(files["data/zzzz-xbox-lowmem.pk3"]),
+            "sha256": hashlib.sha256(files["data/zzzz-xbox-lowmem.pk3"]).hexdigest(),
+        },
         "files": sorted(manifest_files, key=lambda row: row["path"]),
     }
     content = json.dumps(identity, sort_keys=True, indent=2) + "\n"
@@ -65,8 +76,8 @@ class XboxVerifyReleaseTreeTests(unittest.TestCase):
         tool = load_tool()
         with tempfile.TemporaryDirectory() as td:
             summary = tool.verify_tree(make_disc(Path(td)))
-            self.assertEqual(summary["data_files"], 3)
-            self.assertEqual(summary["pk3_files"], 1)
+            self.assertEqual(summary["data_files"], 4)
+            self.assertEqual(summary["pk3_files"], 2)
 
     def test_manifest_drift_is_rejected(self):
         tool = load_tool()
@@ -74,6 +85,24 @@ class XboxVerifyReleaseTreeTests(unittest.TestCase):
             disc = make_disc(Path(td))
             (disc / "data" / "data20091001.pk3").write_bytes(b"changed")
             with self.assertRaises(tool.ReleaseTreeError):
+                tool.verify_tree(disc)
+
+    def test_derived_pack_identity_is_required_and_reconciled(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            disc = make_disc(Path(td))
+            identity_path = disc / "CONTENT-IDENTITY.json"
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            identity["derived_content"]["sha256"] = "0" * 64
+            identity_path.write_text(
+                json.dumps(identity, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            )
+            content_hash = hashlib.sha256(identity_path.read_bytes()).hexdigest()
+            (disc / "BUILD-IDENTITY.txt").write_text(
+                "release=nexuiz-xbox-2.5.2\ncontent_identity_sha256=" + content_hash + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(tool.ReleaseTreeError, "derived"):
                 tool.verify_tree(disc)
 
 

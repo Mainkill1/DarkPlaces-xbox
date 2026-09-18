@@ -54,7 +54,7 @@ help:
 	  '' \
 	  'Offline phases:' \
 	  '  make -C xbox/release preflight     verify every dependency checkout and archive identity' \
-	  '  make -C xbox/release stage         stage complete data tree + Xbox defaults' \
+	  '  make -C xbox/release stage         stage complete data + deterministic stock-64 texture override' \
 	  '  make -C xbox/release engine        compile/link main.exe only' \
 	  '  make -C xbox/release xbe           generate default.xbe from the linked engine' \
 	  '  make -C xbox/release verify-tree   reconcile staged data, identities and XBE before packaging' \

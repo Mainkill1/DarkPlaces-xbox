@@ -121,6 +121,15 @@ xbox/release/out/
 
 The XISO is staged from the **complete Nexuiz 2.5.2 `data/` tree**, not a benchmark-only subset. The stager adds `xbox-defaults.cfg` and appends `exec xbox-defaults.cfg` to an existing `autoexec.cfg` instead of replacing the game's original startup configuration.
 
+Staging also generates `data/zzzz-xbox-lowmem.pk3` from the verified original
+PK3s. Effective TGA assets larger than 512 pixels on either axis are reduced by
+deterministic repeated box filtering. Generated images are uncompressed TGA
+entries in a stored PK3, bounding the runtime source image to at most 1 MiB and
+avoiding a DEFLATE workspace for those overrides. The original PK3 bytes are
+unchanged. `CONTENT-IDENTITY.json` records the generated pack policy, asset
+count, byte size, and SHA-256; the normal tree and XISO verifiers cover it.
+See [Low-Memory Material Downscaling](../../wiki/Low-Memory-Material-Downscaling.md).
+
 The Xbox defaults preserve:
 
 - controller movement/look and combat bindings;
@@ -130,8 +139,10 @@ The Xbox defaults preserve:
 
 They also invoke `xbox_apply_memory_profile` after normal saved configuration
 has loaded and before autoplay begins. The XBE selects `retail64` below 112 MiB
-of detected physical memory and `dev128` at or above 112 MiB. `dev128` is a
-diagnostic profile and does not count as stock-memory acceptance.
+of detected physical memory and `dev128` at or above 112 MiB. The staged
+low-memory content is deliberately shared by both profiles so one canonical
+XISO remains the test target. `dev128` is diagnostic and does not count as
+stock-memory acceptance.
 
 For controlled testing, create
 `E:\UDATA\Nexuiz\memory-profile.txt` containing exactly `retail64`, `dev128`,

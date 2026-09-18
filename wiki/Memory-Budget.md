@@ -184,6 +184,22 @@ RGBA8 for comparison. The conversion reduces each channel, including alpha,
 to four bits and therefore requires a native color/alpha chart plus gameplay
 coverage. It is a candidate, not a claim that `strength` now loads.
 
+The following RGBA4 capture advanced from upload marker 225 to 311 and then
+failed while allocating the decoded source buffer for
+`textures/eX/eX_wall_pipe.tga`. That source is 1024x1024 and expands to 4 MiB
+before `gl_picmip` can reduce its upload; the pinned corpus also contains
+2048x2048 TGA inputs that require 16 MiB transient buffers. Runtime picmip and
+16-bit GPU storage therefore cannot bound this earlier decode peak.
+
+Canonical staging now generates `zzzz-xbox-lowmem.pk3` from the immutable
+source packs. Every effective TGA above 512 pixels on either axis is repeatedly
+box-filtered to fit 512x512, emitted as an uncompressed TGA, and stored without
+ZIP compression. This bounds each overridden source decode to at most 1 MiB
+and avoids a simultaneous DEFLATE workspace. The generated pack and conversion
+manifest are content-addressed; originals remain unchanged. This closes a
+host-side content-preparation defect only. A new stock-64-MiB run must still
+show map load, first frame, gameplay, transitions, and stable watermarks.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;
