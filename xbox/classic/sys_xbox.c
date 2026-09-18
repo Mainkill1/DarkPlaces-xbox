@@ -10,7 +10,6 @@
 #include <nxdk/net.h>
 #include <SDL.h>
 #include <zlib.h>
-#include <png.h>
 #include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
 
@@ -34,30 +33,6 @@ static void *Xbox_StaticSymbol(const char *name)
 	if (!strcmp(name, "deflateInit2_")) return (void *)Xbox_ZlibDeflateInit2_;
 	if (!strcmp(name, "deflateEnd")) return (void *)deflateEnd;
 	if (!strcmp(name, "deflate")) return (void *)deflate;
-
-	/* libpng: Nexuiz HUD/menu/world textures. */
-	if (!strcmp(name, "png_set_sig_bytes")) return (void *)png_set_sig_bytes;
-	if (!strcmp(name, "png_sig_cmp")) return (void *)png_sig_cmp;
-	if (!strcmp(name, "png_create_read_struct")) return (void *)png_create_read_struct;
-	if (!strcmp(name, "png_create_info_struct")) return (void *)png_create_info_struct;
-	if (!strcmp(name, "png_read_info")) return (void *)png_read_info;
-	if (!strcmp(name, "png_set_expand")) return (void *)png_set_expand;
-	if (!strcmp(name, "png_set_gray_1_2_4_to_8")) return (void *)png_set_expand_gray_1_2_4_to_8;
-	if (!strcmp(name, "png_set_palette_to_rgb")) return (void *)png_set_palette_to_rgb;
-	if (!strcmp(name, "png_set_tRNS_to_alpha")) return (void *)png_set_tRNS_to_alpha;
-	if (!strcmp(name, "png_set_gray_to_rgb")) return (void *)png_set_gray_to_rgb;
-	if (!strcmp(name, "png_set_filler")) return (void *)png_set_filler;
-	if (!strcmp(name, "png_read_update_info")) return (void *)png_read_update_info;
-	if (!strcmp(name, "png_read_image")) return (void *)png_read_image;
-	if (!strcmp(name, "png_read_end")) return (void *)png_read_end;
-	if (!strcmp(name, "png_destroy_read_struct")) return (void *)png_destroy_read_struct;
-	if (!strcmp(name, "png_set_read_fn")) return (void *)png_set_read_fn;
-	if (!strcmp(name, "png_get_valid")) return (void *)png_get_valid;
-	if (!strcmp(name, "png_get_rowbytes")) return (void *)png_get_rowbytes;
-	if (!strcmp(name, "png_get_channels")) return (void *)png_get_channels;
-	if (!strcmp(name, "png_get_bit_depth")) return (void *)png_get_bit_depth;
-	if (!strcmp(name, "png_get_IHDR")) return (void *)png_get_IHDR;
-	if (!strcmp(name, "png_get_libpng_ver")) return (void *)png_get_libpng_ver;
 
 	/* libvorbis/libvorbisfile: Nexuiz sound effects and music. */
 	if (!strcmp(name, "ov_clear")) return (void *)ov_clear;
