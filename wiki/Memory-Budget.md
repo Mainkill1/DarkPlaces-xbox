@@ -216,6 +216,19 @@ the first image, and scales merged UV regions from that value. This is the next
 isolated candidate; successful host packaging does not prove the runtime map
 gate.
 
+The next capture verified that all 28 reduced Strength lightmaps decoded, then
+failed on the following 64 KiB conversion-buffer allocation at
+`model_brush.c:4560`. Even the reduced images were still retained as a complete
+set before conversion. The classic Xbox build now materializes an Xbox-only
+`model_brush.c` which validates the external set one image at a time, allocates
+the conversion buffer only after that scan, and then decodes, converts, uploads,
+and frees one lightmap at a time. The loader's retained pixel/conversion portion
+is therefore bounded to one 64 KiB decoded BGRA image plus one 64 KiB
+conversion buffer; file-input and decoder bookkeeping are separate. Internal
+BSP lightmap ownership is unchanged.
+This is compiled evidence only until a new stock-64-MiB trace reaches the map
+and first-frame gates.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

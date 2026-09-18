@@ -39,7 +39,7 @@ ENGINE_COMMON := \
 	filematch.c fractalnoise.c gl_backend.c gl_draw.c \
 	gl_rsurf.c gl_textures.c hmac.c host.c host_cmd.c image.c jpeg.c keys.c \
 	lhnet.c libcurl.c mathlib.c matrixlib.c mdfour.c menu.c meshqueue.c \
-	model_alias.c model_brush.c model_shared.c model_sprite.c mvm_cmds.c \
+	model_alias.c model_shared.c model_sprite.c mvm_cmds.c \
 	netconn.c palette.c polygon.c portals.c protocol.c prvm_cmds.c prvm_edict.c \
 	prvm_exec.c r_explosion.c r_lerpanim.c r_lightning.c r_modules.c \
 	r_shadow.c r_sky.c r_sprites.c sbar.c sv_demo.c sv_main.c sv_move.c \
@@ -48,11 +48,12 @@ ENGINE_COMMON := \
 ENGINE_SOUND := snd_main.c snd_mem.c snd_mix.c snd_ogg.c snd_wav.c snd_modplug.c
 PATCHED_FS := $(CLASSIC_PORT_DIR)/build/generated/fs_xbox.c
 PATCHED_GL_RMAIN := $(CLASSIC_PORT_DIR)/build/generated/gl_rmain_xbox.c
+PATCHED_MODEL_BRUSH := $(CLASSIC_PORT_DIR)/build/generated/model_brush_xbox.c
 MEMORY_HEADER_DIR := $(CLASSIC_PORT_DIR)/build/generated/memory
 PATCHED_QUAKEDEF := $(MEMORY_HEADER_DIR)/quakedef_xbox.h
 PATCHED_NETCONN := $(MEMORY_HEADER_DIR)/netconn_xbox.h
 ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c) \
-	$(PATCHED_FS) $(PATCHED_GL_RMAIN)
+	$(PATCHED_FS) $(PATCHED_GL_RMAIN) $(PATCHED_MODEL_BRUSH)
 
 # Do not wildcard third-party codec directories. The release lock pins exact
 # source revisions and the Xbox executable carries only the library translation
@@ -142,6 +143,10 @@ $(PATCHED_FS): $(ENGINE_DIR)/fs.c $(ROOT_DIR)/tools/xbox/patch_classic_fs.py
 $(PATCHED_GL_RMAIN): $(ENGINE_DIR)/gl_rmain.c $(ROOT_DIR)/tools/xbox/patch_classic_skin_layers.py
 	@mkdir -p "$(dir $@)"
 	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_skin_layers.py" "$<" "$@"
+
+$(PATCHED_MODEL_BRUSH): $(ENGINE_DIR)/model_brush.c $(ROOT_DIR)/tools/xbox/patch_classic_lightmaps.py
+	@mkdir -p "$(dir $@)"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_lightmaps.py" "$<" "$@"
 
 $(PATCHED_QUAKEDEF): $(ENGINE_DIR)/quakedef.h $(ENGINE_DIR)/netconn.h $(ROOT_DIR)/tools/xbox/patch_classic_memory_headers.py
 	@mkdir -p "$(MEMORY_HEADER_DIR)"
