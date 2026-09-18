@@ -138,6 +138,29 @@ class PackBuilderTests(unittest.TestCase):
             with self.assertRaises(lowmem.TexturePackError):
                 lowmem.build_pack([pack], root / "output.pk3", max_dimension=512)
 
+    def test_external_lightmaps_use_the_stock_128_pixel_limit(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            pack = root / "input.pk3"
+            pixels = bytes((30, 60, 90)) * (512 * 512)
+            source = tga(512, 512, "RGB", pixels)
+            self.write_pack(pack, {
+                "maps/strength/lm_0000.tga": source,
+                "textures/exactly-512.tga": source,
+            })
+
+            output = root / "output.pk3"
+            manifest = lowmem.build_pack([pack], output, max_dimension=512)
+
+            self.assertEqual(manifest["external_lightmap_dimension"], 128)
+            self.assertEqual(manifest["asset_count"], 1)
+            self.assertEqual(manifest["assets"][0]["path"], "maps/strength/lm_0000.tga")
+            self.assertEqual(manifest["assets"][0]["output_dimensions"], [128, 128])
+            with zipfile.ZipFile(output) as zf:
+                self.assertNotIn("textures/exactly-512.tga", zf.namelist())
+                converted = lowmem.decode_tga(zf.read("maps/strength/lm_0000.tga"))
+                self.assertEqual((converted.width, converted.height), (128, 128))
+
 
 if __name__ == "__main__":
     unittest.main()

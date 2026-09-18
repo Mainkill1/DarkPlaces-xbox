@@ -52,6 +52,7 @@ def make_disc(root: Path) -> Path:
             "path": "data/zzzz-xbox-lowmem.pk3",
             "profile": "stock64",
             "max_dimension": 512,
+            "external_lightmap_dimension": 128,
             "filter": "repeated-2x2-box-premultiplied-alpha",
             "entry_storage": "stored",
             "asset_count": 121,

@@ -15,6 +15,7 @@
 - `xbox/release` remains the only end-to-end release route.
 - The verified Nexuiz archive and original PK3 files remain immutable.
 - Both image dimensions must be at most 512 pixels in generated overrides.
+- External `maps/<map>/lm_NNNN.tga` lightmaps must be at most 128x128.
 - Output ZIP entries are stored, sorted, and carry fixed metadata.
 - 64 MiB is the acceptance target; 128 MiB remains diagnostic-only.
 - No third-party host image library is introduced.

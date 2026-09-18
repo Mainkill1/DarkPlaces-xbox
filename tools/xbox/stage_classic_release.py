@@ -235,6 +235,7 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
             "path": f"data/{LOWMEM_PACK_NAME}",
             "profile": lowmem_manifest["profile"],
             "max_dimension": lowmem_manifest["max_dimension"],
+            "external_lightmap_dimension": lowmem_manifest["external_lightmap_dimension"],
             "filter": lowmem_manifest["filter"],
             "entry_storage": lowmem_manifest["entry_storage"],
             "asset_count": lowmem_manifest["asset_count"],

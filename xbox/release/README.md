@@ -130,6 +130,12 @@ unchanged. `CONTENT-IDENTITY.json` records the generated pack policy, asset
 count, byte size, and SHA-256; the normal tree and XISO verifiers cover it.
 See [Low-Memory Material Downscaling](../../wiki/Low-Memory-Material-Downscaling.md).
 
+External Q3 lightmaps named `maps/<map>/lm_NNNN.tga` have a stricter 128x128
+ceiling. The pinned loader retains a map's complete decoded external-lightmap
+set before upload and does not apply normal world picmip to the resulting GPU
+textures. The separate ceiling bounds both peaks while preserving the loader's
+required square power-of-two input and size-derived UV scaling.
+
 The Xbox defaults preserve:
 
 - controller movement/look and combat bindings;

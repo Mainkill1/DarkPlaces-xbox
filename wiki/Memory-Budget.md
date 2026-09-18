@@ -200,6 +200,22 @@ manifest are content-addressed; originals remain unchanged. This closes a
 host-side content-preparation defect only. A new stock-64-MiB run must still
 show map load, first frame, gameplay, transitions, and stable watermarks.
 
+The first run with that override passed `eX_wall_pipe`, advanced from marker
+311 to 350, completed the Strength material set, and entered `Using external
+lightmaps`. It then failed decoding `maps/strength/lm_0001` at `image.c:435`.
+Strength contains 28 external 512x512 TGAs, and the pinned loader retains all
+decoded BGRA images before it uploads or frees any of them: 28 MiB of temporary
+pixels, excluding compressed input and resident textures. The complete corpus
+contains 410 such lightmaps across 37 maps.
+
+The generated override therefore applies a distinct 128x128 ceiling to
+`maps/<map>/lm_NNNN.tga`. For Strength this reduces retained decoded pixels to
+1.75 MiB and the RGBA4 resident upper bound to roughly 0.875 MiB. The engine
+accepts square power-of-two external lightmaps, derives its lightmap size from
+the first image, and scales merged UV regions from that value. This is the next
+isolated candidate; successful host packaging does not prove the runtime map
+gate.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

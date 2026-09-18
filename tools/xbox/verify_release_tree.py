@@ -80,7 +80,8 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
         raise ReleaseTreeError("CONTENT-IDENTITY.json contains no staged files")
     derived = identity["derived_content"]
     derived_keys = {
-        "path", "profile", "max_dimension", "filter", "entry_storage",
+        "path", "profile", "max_dimension", "external_lightmap_dimension",
+        "filter", "entry_storage",
         "asset_count", "bytes", "sha256",
     }
     if not isinstance(derived, dict) or set(derived) != derived_keys:
@@ -89,6 +90,7 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
         derived["path"] != "data/zzzz-xbox-lowmem.pk3"
         or derived["profile"] != "stock64"
         or derived["max_dimension"] != 512
+        or derived["external_lightmap_dimension"] != 128
         or derived["filter"] != "repeated-2x2-box-premultiplied-alpha"
         or derived["entry_storage"] != "stored"
         or type(derived["asset_count"]) is not int

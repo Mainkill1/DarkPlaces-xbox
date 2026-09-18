@@ -9,12 +9,15 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import sys
 import zipfile
 
 MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MANIFEST_NAME = "xbox-lowmem-manifest.json"
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
+EXTERNAL_LIGHTMAP = re.compile(r"maps/[^/]+/lm_[0-9]{4}\.tga\Z", re.IGNORECASE)
+EXTERNAL_LIGHTMAP_DIMENSION = 128
 
 
 class TexturePackError(ValueError):
@@ -191,9 +194,16 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def build_pack(pk3_paths: list[Path], output_path: Path, max_dimension: int = 512) -> dict:
+def build_pack(
+    pk3_paths: list[Path],
+    output_path: Path,
+    max_dimension: int = 512,
+    external_lightmap_dimension: int = EXTERNAL_LIGHTMAP_DIMENSION,
+) -> dict:
     if not pk3_paths:
         raise TexturePackError("at least one source PK3 is required")
+    if external_lightmap_dimension <= 0 or external_lightmap_dimension > max_dimension:
+        raise TexturePackError("external lightmap dimension must be positive and bounded")
     effective: dict[str, tuple[str, Path, str, int, int, int]] = {}
     for raw_path in pk3_paths:
         pack_path = Path(raw_path)
@@ -231,7 +241,10 @@ def build_pack(pk3_paths: list[Path], output_path: Path, max_dimension: int = 51
     for name, pack_path, member, declared_size, width, height in sorted(
         effective.values(), key=lambda item: item[0].casefold()
     ):
-        if width <= max_dimension and height <= max_dimension:
+        asset_limit = (
+            external_lightmap_dimension if EXTERNAL_LIGHTMAP.fullmatch(name) else max_dimension
+        )
+        if width <= asset_limit and height <= asset_limit:
             continue
         try:
             with zipfile.ZipFile(pack_path) as zf:
@@ -244,7 +257,7 @@ def build_pack(pk3_paths: list[Path], output_path: Path, max_dimension: int = 51
             image = decode_tga(source)
         except TexturePackError as exc:
             raise TexturePackError(f"cannot convert oversized {pack_path.name}:{name}: {exc}") from exc
-        converted_image = downscale_to_limit(image, max_dimension)
+        converted_image = downscale_to_limit(image, asset_limit)
         converted = encode_tga(converted_image)
         record = {
             "path": name,
@@ -255,6 +268,7 @@ def build_pack(pk3_paths: list[Path], output_path: Path, max_dimension: int = 51
             "output_bytes": len(converted),
             "output_sha256": _sha256(converted),
             "output_dimensions": [converted_image.width, converted_image.height],
+            "dimension_limit": asset_limit,
             "mode": converted_image.mode,
         }
         assets.append((name, converted, record))
@@ -263,6 +277,7 @@ def build_pack(pk3_paths: list[Path], output_path: Path, max_dimension: int = 51
         "schema_version": 1,
         "profile": "stock64",
         "max_dimension": max_dimension,
+        "external_lightmap_dimension": external_lightmap_dimension,
         "filter": "repeated-2x2-box-premultiplied-alpha",
         "entry_storage": "stored",
         "asset_count": len(assets),

@@ -11,14 +11,19 @@ artifact and is not committed or independently redistributed.
   when the XBE detects 128 MiB; 128 MiB remains diagnostic-only.
 - Every effective TGA whose width or height exceeds 512 pixels is reduced by
   repeated two-to-one box filtering until both dimensions are at most 512.
+- External Q3 lightmaps matching `maps/<map>/lm_NNNN.tga` use a separate
+  128x128 ceiling. The pinned classic loader retains every decoded external
+  lightmap for a map before uploading any of them; this bounds both that
+  aggregate temporary set and the non-picmipped resident lightmaps.
 - True-color 24-bit and 32-bit TGA images and 8-bit grayscale TGA images are
   supported, including their RLE forms used by the pinned content. Unsupported
   oversized input is a staging error, never silently copied.
 - Alpha-bearing images use premultiplied-alpha averaging while filtering, then
   return to straight alpha. This avoids dark fringes at transparent edges.
 - Generated images use uncompressed TGA entries in a stored PK3. That bounds
-  each runtime source decode to at most 1 MiB and avoids a second DEFLATE
-  workspace at the material-loading boundary.
+  each general runtime source decode to at most 1 MiB, each external-lightmap
+  decode to 64 KiB, and avoids a second DEFLATE workspace at the loading
+  boundary.
 - Pack entries are sorted, use fixed ZIP metadata, and include a manifest with
   source/output dimensions and SHA-256 hashes. Identical verified inputs must
   produce an identical override pack.

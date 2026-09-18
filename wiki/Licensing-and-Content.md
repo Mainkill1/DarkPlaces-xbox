@@ -68,6 +68,10 @@ derivative is subject to the same source attribution and redistribution audit
 as its inputs and must not be committed as a substitute for the external
 archive.
 
+The same generated pack applies a stricter 128x128 bound to external Q3
+lightmaps matching `maps/<map>/lm_NNNN.tga`; this path-specific policy is also
+recorded in both manifests.
+
 Xbox startup defaults are generated separately as `xbox-defaults.cfg`. If the
 original package contains `autoexec.cfg`, its existing contents are preserved and
 an `exec xbox-defaults.cfg` line is appended rather than replacing game startup

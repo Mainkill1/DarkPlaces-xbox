@@ -59,6 +59,7 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             self.assertEqual(derived["path"], "data/zzzz-xbox-lowmem.pk3")
             self.assertEqual(derived["asset_count"], 0)
             self.assertEqual(derived["max_dimension"], 512)
+            self.assertEqual(derived["external_lightmap_dimension"], 128)
             generated = disc / derived["path"]
             self.assertEqual(derived["bytes"], generated.stat().st_size)
             self.assertEqual(derived["sha256"], hashlib.sha256(generated.read_bytes()).hexdigest())
