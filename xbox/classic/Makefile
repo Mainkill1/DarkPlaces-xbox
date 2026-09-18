@@ -15,6 +15,7 @@ ENGINE_DIR ?= $(abspath $(ROOT_DIR)/../darkplaces-classic)
 PBGL_DIR ?= $(abspath $(ROOT_DIR)/../pbgl)
 OGG_DIR ?= $(abspath $(ROOT_DIR)/../ogg)
 VORBIS_DIR ?= $(abspath $(ROOT_DIR)/../vorbis)
+PYTHON ?= python3
 
 export NXDK_DIR
 export PATH := $(NXDK_DIR)/bin:$(PATH)
@@ -35,7 +36,7 @@ ENGINE_COMMON := \
 	cl_collision.c cl_demo.c cl_dyntexture.c cl_gecko.c cl_input.c cl_main.c \
 	cl_parse.c cl_particles.c cl_screen.c cl_video.c clvm_cmds.c cmd.c \
 	collision.c common.c console.c csprogs.c curves.c cvar.c dpvsimpledecode.c \
-	filematch.c fractalnoise.c fs.c gl_backend.c gl_draw.c gl_rmain.c \
+	filematch.c fractalnoise.c gl_backend.c gl_draw.c gl_rmain.c \
 	gl_rsurf.c gl_textures.c hmac.c host.c host_cmd.c image.c image_png.c jpeg.c keys.c \
 	lhnet.c libcurl.c mathlib.c matrixlib.c mdfour.c menu.c meshqueue.c \
 	model_alias.c model_brush.c model_shared.c model_sprite.c mvm_cmds.c \
@@ -45,7 +46,8 @@ ENGINE_COMMON := \
 	sv_phys.c sv_user.c svbsp.c svvm_cmds.c vid_shared.c view.c wad.c world.c zone.c
 
 ENGINE_SOUND := snd_main.c snd_mem.c snd_mix.c snd_ogg.c snd_wav.c snd_modplug.c
-ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c)
+PATCHED_FS := $(CLASSIC_PORT_DIR)/build/generated/fs_xbox.c
+ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c) $(PATCHED_FS)
 
 # Do not wildcard third-party codec directories. The release lock pins exact
 # source revisions and the Xbox executable carries only the library translation
@@ -67,6 +69,7 @@ PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/vid_xbox.c \
 	$(CLASSIC_PORT_DIR)/gl_compat.c \
 	$(CLASSIC_PORT_DIR)/gl_bootstrap_xbox.c \
+	$(CLASSIC_PORT_DIR)/zlib_xbox.c \
 	$(CLASSIC_PORT_DIR)/boot_trace_xbox.c \
 	$(CLASSIC_PORT_DIR)/storage_xbox.c \
 	$(CLASSIC_PORT_DIR)/path_xbox.c \
@@ -116,6 +119,10 @@ main.exe: $(PBGL_LIB)
 # Keep compiler flags for dependency sources local to this target.
 $(OGG_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC
 $(VORBIS_SRCS:.c=.obj): CFLAGS += -DOGG_STATIC -Dalloca=__builtin_alloca
+
+$(PATCHED_FS): $(ENGINE_DIR)/fs.c $(ROOT_DIR)/tools/xbox/patch_classic_fs.py
+	@mkdir -p "$(dir $@)"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_fs.py" "$<" "$@"
 
 .PHONY: print-pins
 print-pins:

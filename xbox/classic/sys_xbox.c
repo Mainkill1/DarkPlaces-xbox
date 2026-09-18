@@ -18,6 +18,7 @@
 #include "include/xbox_boot_trace.h"
 #include "include/xbox_network.h"
 #include "include/xbox_storage.h"
+#include "include/xbox_zlib.h"
 
 #define XBOX_BASEDIR "D:/"
 #define XBOX_USERDIR "E:/UDATA/Nexuiz"
@@ -28,9 +29,9 @@ static void *Xbox_StaticSymbol(const char *name)
 	/* zlib: PK3 loading/writing */
 	if (!strcmp(name, "inflate")) return (void *)inflate;
 	if (!strcmp(name, "inflateEnd")) return (void *)inflateEnd;
-	if (!strcmp(name, "inflateInit2_")) return (void *)inflateInit2_;
+	if (!strcmp(name, "inflateInit2_")) return (void *)Xbox_ZlibInflateInit2_;
 	if (!strcmp(name, "inflateReset")) return (void *)inflateReset;
-	if (!strcmp(name, "deflateInit2_")) return (void *)deflateInit2_;
+	if (!strcmp(name, "deflateInit2_")) return (void *)Xbox_ZlibDeflateInit2_;
 	if (!strcmp(name, "deflateEnd")) return (void *)deflateEnd;
 	if (!strcmp(name, "deflate")) return (void *)deflate;
 

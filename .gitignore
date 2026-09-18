@@ -74,7 +74,7 @@ wasm/preload/*
 
 # Canonical release-candidate dependencies and generated outputs. External source
 # repositories and the ~931 MB Nexuiz archive are verified locally, never committed.
-/deps/
+/deps
 /xbox/classic/build/
 /xbox/release/out/
 
