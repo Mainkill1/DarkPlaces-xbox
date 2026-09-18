@@ -20,6 +20,12 @@ static void Xbox_glTexParameterfv(GLenum target, GLenum pname, GLfloat *params);
 static void Xbox_glArrayElement(GLint index);
 static void Xbox_glTexCoord1f(GLfloat s);
 static void Xbox_glMultiTexCoord1f(GLenum unit, GLfloat s);
+static void Xbox_glTexImage2D(GLenum target, GLint level, GLint internalformat,
+    GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type,
+    const GLvoid *pixels);
+static void Xbox_glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
+    GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type,
+    const GLvoid *pixels);
 static void Xbox_glTexImage1D(GLenum target, GLint level, GLint internalformat,
     GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
 static void Xbox_glTexSubImage1D(GLenum target, GLint level, GLint xoffset,

@@ -5,6 +5,7 @@
 #include <GL/glext.h>
 
 #include "quakedef.h"
+#include "xbox_gl_upload.h"
 
 /*
  * DarkPlaces 2009 resolves GL entry points at runtime. pbGL is statically
@@ -61,18 +62,36 @@ static void Xbox_glMultiTexCoord1f(GLenum unit, GLfloat s)
 	glMultiTexCoord4f(unit, s, 0.f, 0.f, 1.f);
 }
 
+static void Xbox_glTexImage2D(GLenum target, GLint level, GLint internalformat,
+	GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type,
+	const GLvoid *pixels)
+{
+	Xbox_GLTexImage2D(glTexImage2D, target, level, internalformat, width,
+		height, border, format, type, pixels);
+}
+
+static void Xbox_glTexSubImage2D(GLenum target, GLint level, GLint xoffset,
+	GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type,
+	const GLvoid *pixels)
+{
+	Xbox_GLTexSubImage2D(glTexSubImage2D, target, level, xoffset, yoffset,
+		width, height, format, type, pixels);
+}
+
 static void Xbox_glTexImage1D(GLenum target, GLint level, GLint internalformat,
 	GLsizei width, GLint border, GLenum format, GLenum type, const GLvoid *pixels)
 {
 	(void)target;
-	glTexImage2D(GL_TEXTURE_2D, level, internalformat, width, 1, border, format, type, pixels);
+	Xbox_glTexImage2D(GL_TEXTURE_2D, level, internalformat, width, 1,
+		border, format, type, pixels);
 }
 
 static void Xbox_glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
 	GLsizei width, GLenum format, GLenum type, const GLvoid *pixels)
 {
 	(void)target;
-	glTexSubImage2D(GL_TEXTURE_2D, level, xoffset, 0, width, 1, format, type, pixels);
+	Xbox_glTexSubImage2D(GL_TEXTURE_2D, level, xoffset, 0, width, 1,
+		format, type, pixels);
 }
 
 static void Xbox_glCopyTexImage1D(GLenum target, GLint level, GLenum internalformat,
@@ -131,7 +150,7 @@ void *GL_GetProcAddress(const char *name_string)
 	MAP_GL(glClearStencil); MAP_GL(glTexEnvf); MAP_GL(glTexEnvfv); MAP_GL(glTexEnvi);
 	MAP_GL(glTexParameterf); MAP_GL(glTexParameteri); MAP_GL(glHint);
 	MAP_GL(glPixelStorei); MAP_GL(glGenTextures); MAP_GL(glDeleteTextures); MAP_GL(glBindTexture);
-	MAP_GL(glIsTexture); MAP_GL(glTexImage2D); MAP_GL(glTexSubImage2D);
+	MAP_GL(glIsTexture);
 	MAP_GL(glCopyTexImage2D); MAP_GL(glCopyTexSubImage2D); MAP_GL(glScissor);
 	MAP_GL(glPolygonOffset); MAP_GL(glPolygonMode);
 
@@ -140,6 +159,8 @@ void *GL_GetProcAddress(const char *name_string)
 	if (!strcmp(name_string, "glGetDoublev")) return (void *)Xbox_glGetDoublev;
 	if (!strcmp(name_string, "glPixelStoref")) return (void *)Xbox_glPixelStoref;
 	if (!strcmp(name_string, "glTexParameterfv")) return (void *)Xbox_glTexParameterfv;
+	if (!strcmp(name_string, "glTexImage2D")) return (void *)Xbox_glTexImage2D;
+	if (!strcmp(name_string, "glTexSubImage2D")) return (void *)Xbox_glTexSubImage2D;
 	if (!strcmp(name_string, "glArrayElement")) return (void *)Xbox_glArrayElement;
 	if (!strcmp(name_string, "glTexCoord1f")) return (void *)Xbox_glTexCoord1f;
 	if (!strcmp(name_string, "glTexImage1D")) return (void *)Xbox_glTexImage1D;

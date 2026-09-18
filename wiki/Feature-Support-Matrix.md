@@ -7,6 +7,7 @@ This matrix states required policy, **not proof of implementation**. [Option B](
 | Desktop SDL renderer | Preserve | Existing `sdl-release` CI |
 | Xbox video | Tested mode selection compatible with attached output; no assumed 480p prerequisite | xemu + retail hardware |
 | Generic textured mesh | Native | reference capture |
+| BGRA texture input on classic pbGL path | Approximate compatibility conversion to RGBA with a checked 16 MiB transient staging ceiling; source buffers remain engine-owned and unchanged | adapter fixture + GL error checks + native color chart |
 | `glArrayElement` driver-test path | Disabled; production remains on pbGL `glDrawElements`, and forcing `gl_mesh_testarrayelement` is a deliberate no-op fallback | link audit + native mesh capture |
 | 2D console/menu | Native | text and UI screenshots |
 | Q3 BSP/PVS | Required | full pinned map inventory, not only a demo |
