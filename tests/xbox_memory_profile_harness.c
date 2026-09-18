@@ -125,6 +125,7 @@ int main(int argc, char **argv)
 	policy = Xbox_MemoryProfilePolicy();
 	assert(policy->profile == XBOX_MEMORY_PROFILE_RETAIL64);
 	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
+	assert(Xbox_MemoryProfileUsesReducedColorTextures());
 	assert(strstr(trace_text, "profile=retail64"));
 	assert(strstr(trace_text, "total=64 MiB available=18 MiB"));
 	Xbox_MemoryProfileRegisterCommands();
@@ -145,11 +146,13 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "sound_streaming=0->1"));
 	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
 	assert(strstr(trace_text, "enhanced_material_layers=0"));
+	assert(strstr(trace_text, "reduced_color_textures=1"));
 
 	reset(128, 82);
 	assert(Xbox_MemoryProfileInitialize(path));
 	assert(Xbox_MemoryProfilePolicy()->profile == XBOX_MEMORY_PROFILE_DEV128);
 	assert(Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
+	assert(!Xbox_MemoryProfileUsesReducedColorTextures());
 	Xbox_MemoryProfileRegisterCommands();
 	registered_command();
 	assert(cvars[0].integer == 2048);
@@ -162,6 +165,7 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "gl_max_size=2048->2048"));
 	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
 	assert(strstr(trace_text, "enhanced_material_layers=1"));
+	assert(strstr(trace_text, "reduced_color_textures=0"));
 
 	remove(path);
 	reset(64, 18);
@@ -184,6 +188,7 @@ int main(int argc, char **argv)
 	assert(Xbox_MemoryProfileInitialize(path));
 	assert(Xbox_MemoryProfilePolicy()->profile == XBOX_MEMORY_PROFILE_XEMU64);
 	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
+	assert(Xbox_MemoryProfileUsesReducedColorTextures());
 	assert(strstr(trace_text, "request=xemu64"));
 	Xbox_MemoryProfileRegisterCommands();
 	registered_command();

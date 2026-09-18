@@ -29,6 +29,7 @@ static GLenum seen_format;
 static GLenum seen_type;
 static const GLvoid *seen_pointer;
 static unsigned char seen_pixels[32];
+static int reduced_color_textures = 1;
 static unsigned int trace_count;
 static char trace_operation[2][16];
 static char trace_phase[2][16];
@@ -36,6 +37,11 @@ static int trace_level[2];
 static int trace_width[2];
 static int trace_height[2];
 static int expect_upload_between_markers;
+
+int Xbox_MemoryProfileUsesReducedColorTextures(void)
+{
+    return reduced_color_textures;
+}
 
 void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
     int level, int width, int height)
@@ -65,8 +71,12 @@ static void CaptureImage(GLenum target, GLint level, GLint internalformat,
     seen_format = format;
     seen_type = type;
     seen_pointer = pixels;
-    if (pixels != NULL && width > 0 && height > 0 && width * height * 4 <= 32)
-        memcpy(seen_pixels, pixels, (size_t)width * (size_t)height * 4);
+    if (pixels != NULL && width > 0 && height > 0) {
+        size_t bytes_per_pixel = type == GL_UNSIGNED_SHORT_4_4_4_4 ? 2 : 4;
+        if ((size_t)width * (size_t)height * bytes_per_pixel <= sizeof(seen_pixels))
+            memcpy(seen_pixels, pixels,
+                (size_t)width * (size_t)height * bytes_per_pixel);
+    }
 }
 
 static void CaptureSubImage(GLenum target, GLint level, GLint xoffset,
@@ -91,6 +101,9 @@ int main(void)
         3, 2, 1, 4, 30, 20, 10, 40,
         70, 60, 50, 80, 110, 100, 90, 120
     };
+    static const unsigned short rgba4[] = {
+        0x0000, 0x1102, 0x4335, 0x6657
+    };
     unsigned char original[sizeof(bgra)];
     memcpy(original, bgra, sizeof(bgra));
 
@@ -99,9 +112,10 @@ int main(void)
         2, 2, 0, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
     expect_upload_between_markers = 0;
     assert(seen_target == GL_TEXTURE_2D && seen_level == 0);
-    assert(seen_internal == GL_RGBA8 && seen_width == 2 && seen_height == 2);
-    assert(seen_border == 0 && seen_format == GL_RGBA && seen_type == GL_UNSIGNED_BYTE);
-    assert(memcmp(seen_pixels, rgba, sizeof(rgba)) == 0);
+    assert(seen_internal == GL_RGBA4 && seen_width == 2 && seen_height == 2);
+    assert(seen_border == 0 && seen_format == GL_RGBA);
+    assert(seen_type == GL_UNSIGNED_SHORT_4_4_4_4);
+    assert(memcmp(seen_pixels, rgba4, sizeof(rgba4)) == 0);
     assert(memcmp(bgra, original, sizeof(bgra)) == 0);
     assert(seen_pointer != bgra);
     assert(trace_count == 2);
@@ -119,7 +133,8 @@ int main(void)
     expect_upload_between_markers = 0;
     assert(seen_level == 0 && seen_x == 7 && seen_y == 9);
     assert(seen_format == GL_RGBA);
-    assert(memcmp(seen_pixels, rgba, sizeof(rgba)) == 0);
+    assert(seen_type == GL_UNSIGNED_SHORT_4_4_4_4);
+    assert(memcmp(seen_pixels, rgba4, sizeof(rgba4)) == 0);
     assert(trace_count == 2);
     assert(strcmp(trace_operation[0], "subimage2d") == 0);
     assert(strcmp(trace_operation[1], "subimage2d") == 0);
@@ -135,7 +150,8 @@ int main(void)
 
     Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA,
         4, 4, 0, GL_BGRA, GL_UNSIGNED_BYTE, NULL);
-    assert(seen_format == GL_RGBA && seen_pointer == NULL);
+    assert(seen_internal == GL_RGBA4 && seen_format == GL_RGBA);
+    assert(seen_type == GL_UNSIGNED_SHORT_4_4_4_4 && seen_pointer == NULL);
 
     Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA,
         2, 2, 0, GL_RGBA, GL_UNSIGNED_BYTE, bgra);
@@ -144,6 +160,14 @@ int main(void)
     Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA,
         2, 2, 0, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4, bgra);
     assert(seen_format == GL_BGRA && seen_pointer == bgra);
+
+    reduced_color_textures = 0;
+    Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA8,
+        2, 2, 0, GL_BGRA, GL_UNSIGNED_BYTE, bgra);
+    assert(seen_internal == GL_RGBA8 && seen_format == GL_RGBA);
+    assert(seen_type == GL_UNSIGNED_BYTE);
+    assert(memcmp(seen_pixels, rgba, sizeof(rgba)) == 0);
+    assert(memcmp(bgra, original, sizeof(bgra)) == 0);
 
     /* The fixed staging limit fails visibly through pbGL's unsupported BGRA path. */
     Xbox_GLTexImage2D(CaptureImage, GL_TEXTURE_2D, 0, GL_RGBA,

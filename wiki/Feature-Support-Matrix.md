@@ -8,7 +8,7 @@ This matrix states required policy, **not proof of implementation**. [Option B](
 | Xbox video | Tested mode selection compatible with attached output; no assumed 480p prerequisite | xemu + retail hardware |
 | Generic textured mesh | Native | reference capture |
 | World/material texture resolution on stock memory | Deliberate reduced-resolution fallback: `retail64` and `xemu64` enforce `gl_picmip >= 2`; diagnostic `dev128` preserves the saved choice. Revisit only after bounded residency/eviction exists. | profile trace + controlled visual comparison + stock-memory high-water evidence |
-| BGRA texture input on classic pbGL path | Approximate compatibility conversion to RGBA with a checked 16 MiB transient staging ceiling; source buffers remain engine-owned and unchanged | adapter fixture + GL error checks + native color chart |
+| BGRA texture input on classic pbGL path | Profiled compatibility conversion with a checked 16 MiB transient staging ceiling; source buffers remain engine-owned and unchanged. `retail64`/`xemu64` use native packed RGBA4 storage to halve residency; diagnostic `dev128` retains RGBA8. Four-bit color/alpha is a deliberate stock-memory approximation. | adapter fixture + GL error checks + native color/alpha chart |
 | `glArrayElement` driver-test path | Disabled; production remains on pbGL `glDrawElements`, and forcing `gl_mesh_testarrayelement` is a deliberate no-op fallback | link audit + native mesh capture |
 | 2D console/menu | Native | text and UI screenshots |
 | Q3 BSP/PVS | Required | full pinned map inventory, not only a demo |

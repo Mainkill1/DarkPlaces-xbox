@@ -91,6 +91,7 @@ settings:
 | `r_precachetextures` | exactly 1 |
 | `snd_precache` | 0 maximum |
 | `snd_streaming` | 1 minimum |
+| Color texture storage | RGBA4 (16-bit) |
 
 Other more conservative saved graphics choices are preserved. Texture
 precache is the deliberate exception: in this engine, zero retains each
@@ -169,6 +170,19 @@ therefore now enforce `gl_picmip >= 2`; compared with the previously observed
 `dev128` remains diagnostic and preserves its saved value. This is an isolated
 candidate for the next stock-memory run, not evidence that the map loads or
 that its final visual quality is acceptable.
+
+The next 64 MiB capture verified `gl_picmip 1->2`, reduced the observed base
+uploads from 256x256 to 128x128, passed `eXmetalBase07rust`, and advanced from
+upload marker 175 through marker 225. It then exhausted the remaining roughly
+912 KiB while decoding `textures/eX/eX_wall_b01`. Across the trace, 102 uploads
+accounted for about 11 MiB of observed physical-page loss. The classic pbGL
+path stores supported color textures as 32-bit RGBA and does not implement a
+usable compressed internal format, so the stock profiles now convert BGRA8
+input to native packed RGBA4 at the upload boundary. This halves resident color
+texture bytes while retaining the existing dimensions and leaves `dev128` on
+RGBA8 for comparison. The conversion reduces each channel, including alpha,
+to four bits and therefore requires a native color/alpha chart plus gameplay
+coverage. It is a candidate, not a claim that `strength` now loads.
 
 ## Required instrumentation
 

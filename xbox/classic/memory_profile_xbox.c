@@ -103,6 +103,12 @@ int Xbox_MemoryProfileAllowsEnhancedMaterialLayers(void)
 		&& !xbox_memory_policy.enforce_retail_ceilings;
 }
 
+int Xbox_MemoryProfileUsesReducedColorTextures(void)
+{
+	return xbox_memory_policy.profile != XBOX_MEMORY_PROFILE_DEV128
+		|| xbox_memory_policy.enforce_retail_ceilings;
+}
+
 void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 	int64_t actual)
 {
@@ -207,6 +213,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
 			"sound_streaming=%d->%d enhanced_material_layers=%d "
+			"reduced_color_textures=%d "
 			"retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			(unsigned long long)(available_bytes / XBOX_MIB),
@@ -217,6 +224,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,
 			Xbox_MemoryProfileAllowsEnhancedMaterialLayers(),
+			Xbox_MemoryProfileUsesReducedColorTextures(),
 			retail_violations,
 			xbox_memory_policy.profile == XBOX_MEMORY_PROFILE_DEV128
 				? " diagnostic-only" : "");
@@ -227,6 +235,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
 			"sound_streaming=%d->%d enhanced_material_layers=%d "
+			"reduced_color_textures=%d "
 			"retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			before.gl_max_size, after.gl_max_size,
@@ -236,6 +245,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,
 			Xbox_MemoryProfileAllowsEnhancedMaterialLayers(),
+			Xbox_MemoryProfileUsesReducedColorTextures(),
 			retail_violations,
 			xbox_memory_policy.profile == XBOX_MEMORY_PROFILE_DEV128
 				? " diagnostic-only" : "");

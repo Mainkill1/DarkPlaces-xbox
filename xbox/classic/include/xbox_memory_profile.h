@@ -8,6 +8,7 @@
 int Xbox_MemoryProfileInitialize(const char *override_path);
 const xbox_memory_policy_t *Xbox_MemoryProfilePolicy(void);
 int Xbox_MemoryProfileAllowsEnhancedMaterialLayers(void);
+int Xbox_MemoryProfileUsesReducedColorTextures(void);
 void Xbox_MemoryProfileRegisterCommands(void);
 void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 	int64_t actual);
