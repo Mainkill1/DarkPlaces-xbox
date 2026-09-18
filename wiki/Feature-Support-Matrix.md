@@ -19,7 +19,7 @@ This matrix states required policy, **not proof of implementation**. [Option B](
 | Skeletal formats used anywhere in pinned game | Required | full-game content/animation audit |
 | Particles/sprites/decals | Required | count and overdraw zones |
 | Dynamic lights | Required subset | controlled scene |
-| DOT3/normal mapping | Required subset | controlled scene |
+| DOT3 normal/gloss material layers | Diffuse/lightmap fallback on `retail64` and `xemu64`: optional normal and gloss assets are not loaded under those profiles. `dev128` diagnostically honors the saved normal/gloss renderer controls. A bounded 64 MiB implementation remains required before enabling the layers on retail. | profile trace + controlled scene + stock-memory high-water evidence |
 | Cubemap reflections | Desired | fallback documented |
 | Water/refraction | Approximate or multipass | comparison + timing |
 | Realtime shadows | Native/multipass or explicit cosmetic approximation; required game visibility preserved | coverage and cost report |

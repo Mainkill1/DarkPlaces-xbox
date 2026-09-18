@@ -97,6 +97,12 @@ const xbox_memory_policy_t *Xbox_MemoryProfilePolicy(void)
 	return &xbox_memory_policy;
 }
 
+int Xbox_MemoryProfileAllowsEnhancedMaterialLayers(void)
+{
+	return xbox_memory_policy.profile == XBOX_MEMORY_PROFILE_DEV128
+		&& !xbox_memory_policy.enforce_retail_ceilings;
+}
+
 void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 	int64_t actual)
 {
@@ -200,7 +206,8 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			"gl_max_size=%d->%d gl_picmip=%d->%d "
 			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
-			"sound_streaming=%d->%d retail64_ceiling_violations=%u%s",
+			"sound_streaming=%d->%d enhanced_material_layers=%d "
+			"retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			(unsigned long long)(available_bytes / XBOX_MIB),
 			before.gl_max_size, after.gl_max_size,
@@ -209,6 +216,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			before.r_precachetextures, after.r_precachetextures,
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,
+			Xbox_MemoryProfileAllowsEnhancedMaterialLayers(),
 			retail_violations,
 			xbox_memory_policy.profile == XBOX_MEMORY_PROFILE_DEV128
 				? " diagnostic-only" : "");
@@ -218,7 +226,8 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			"gl_max_size=%d->%d gl_picmip=%d->%d "
 			"picmip_world=%d->%d "
 			"texture_precache=%d->%d sound_precache=%d->%d "
-			"sound_streaming=%d->%d retail64_ceiling_violations=%u%s",
+			"sound_streaming=%d->%d enhanced_material_layers=%d "
+			"retail64_ceiling_violations=%u%s",
 			xbox_memory_policy.name,
 			before.gl_max_size, after.gl_max_size,
 			before.gl_picmip, after.gl_picmip,
@@ -226,6 +235,7 @@ static void Xbox_ApplyMemoryProfile_f(void)
 			before.r_precachetextures, after.r_precachetextures,
 			before.snd_precache, after.snd_precache,
 			before.snd_streaming, after.snd_streaming,
+			Xbox_MemoryProfileAllowsEnhancedMaterialLayers(),
 			retail_violations,
 			xbox_memory_policy.profile == XBOX_MEMORY_PROFILE_DEV128
 				? " diagnostic-only" : "");

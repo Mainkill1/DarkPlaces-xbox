@@ -142,6 +142,22 @@ per-model loading output and the persistent
 gathering changes: they do not establish that the later BSP/lightmap boundary
 fits in 64 MiB.
 
+The next 2026-09-18 stock-memory run reached the first complete Strength
+material load; the display later reported about 15 FPS while its simulation
+timing value remained frozen. The upload trace isolated physical-memory exhaustion rather
+than a blocked upload: `eXmetalBase02` completed its 256x256 base, normal, and
+gloss uploads while available pages fell from 449 before the base layer to 20
+after the third layer (about 80 KiB remaining). The pinned engine loaded normal
+and gloss assets unconditionally despite its own FIXME saying those layers
+needed cvar controls. The Xbox-generated classic source now gates those two
+optional layers by both the detected memory profile and their existing
+renderer controls. `retail64` and `xemu64` use the diffuse/lightmap fallback;
+diagnostic `dev128` retains the optional layers when requested. Glow maps and
+player pants/shirt color layers remain enabled. The source contract now avoids
+the two optional allocations at the demonstrated first-material boundary, but
+the resulting stock-memory peak, map-load gate, and gameplay gate remain
+unverified.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

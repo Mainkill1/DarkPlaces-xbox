@@ -113,6 +113,7 @@ int main(int argc, char **argv)
 	assert(argc == 2);
 	assert(snprintf(path, sizeof(path), "%s/profile.txt", argv[1]) > 0);
 	remove(path);
+	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 
 	reset(64, 19);
 	query_status = -1;
@@ -123,6 +124,7 @@ int main(int argc, char **argv)
 	assert(Xbox_MemoryProfileInitialize(path));
 	policy = Xbox_MemoryProfilePolicy();
 	assert(policy->profile == XBOX_MEMORY_PROFILE_RETAIL64);
+	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 	assert(strstr(trace_text, "profile=retail64"));
 	assert(strstr(trace_text, "total=64 MiB available=18 MiB"));
 	Xbox_MemoryProfileRegisterCommands();
@@ -142,10 +144,12 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "sound_precache=1->0"));
 	assert(strstr(trace_text, "sound_streaming=0->1"));
 	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
+	assert(strstr(trace_text, "enhanced_material_layers=0"));
 
 	reset(128, 82);
 	assert(Xbox_MemoryProfileInitialize(path));
 	assert(Xbox_MemoryProfilePolicy()->profile == XBOX_MEMORY_PROFILE_DEV128);
+	assert(Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 	Xbox_MemoryProfileRegisterCommands();
 	registered_command();
 	assert(cvars[0].integer == 2048);
@@ -157,6 +161,7 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "diagnostic-only"));
 	assert(strstr(trace_text, "gl_max_size=2048->2048"));
 	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
+	assert(strstr(trace_text, "enhanced_material_layers=1"));
 
 	remove(path);
 	reset(64, 18);
@@ -178,6 +183,7 @@ int main(int argc, char **argv)
 	reset(128, 80);
 	assert(Xbox_MemoryProfileInitialize(path));
 	assert(Xbox_MemoryProfilePolicy()->profile == XBOX_MEMORY_PROFILE_XEMU64);
+	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 	assert(strstr(trace_text, "request=xemu64"));
 
 	write_token(path, "dev128");
