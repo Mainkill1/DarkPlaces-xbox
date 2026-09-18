@@ -22,6 +22,61 @@ OLD = '''\
 \t\t}
 '''
 
+INFLATE_READ_ERROR_OLD = '''\
+			if (error != Z_OK && error != Z_STREAM_END)
+			{
+				Con_Printf ("FS_Read: Can't inflate file\\n");
+				break;
+			}
+'''
+
+INFLATE_READ_ERROR_NEW = '''\
+			if (error != Z_OK && error != Z_STREAM_END)
+			{
+				Con_Printf ("FS_Read: inflate error (result: %d, msg: %s)\\n",
+					error, ztk->zstream.msg ? ztk->zstream.msg : "(null)");
+				break;
+			}
+'''
+
+LOAD_FILE_OLD = '''\
+	fs_offset_t filesize = 0;
+
+	file = FS_OpenVirtualFile(path, quiet);
+'''
+
+LOAD_FILE_NEW = '''\
+	fs_offset_t filesize = 0;
+	fs_offset_t readsize = 0;
+
+	file = FS_OpenVirtualFile(path, quiet);
+'''
+
+LOAD_FILE_READ_OLD = '''\
+		buf = (unsigned char *)Mem_Alloc (pool, filesize + 1);
+		buf[filesize] = '\\0';
+		FS_Read (file, buf, filesize);
+		FS_Close (file);
+		if (developer_loadfile.integer)
+			Con_Printf("loaded file \\\"%s\\\" (%u bytes)\\n", path, (unsigned int)filesize);
+'''
+
+LOAD_FILE_READ_NEW = '''\
+		buf = (unsigned char *)Mem_Alloc (pool, filesize + 1);
+		buf[filesize] = '\\0';
+		readsize = FS_Read (file, buf, filesize);
+		if (readsize != filesize)
+		{
+			Xbox_MemoryTraceLoadFailure(path, filesize, readsize);
+			Mem_Free(buf);
+			buf = NULL;
+			filesize = 0;
+		}
+		FS_Close (file);
+		if (buf && developer_loadfile.integer)
+			Con_Printf("loaded file \\\"%s\\\" (%u bytes)\\n", path, (unsigned int)filesize);
+'''
+
 NEW = '''\
 \t\t{
 \t\t\tint inflate_result = qz_inflateInit2 (&ztk->zstream, -MAX_WBITS);
@@ -50,6 +105,15 @@ def materialize(source: Path, output: Path) -> None:
     if text.count(OLD) != 1:
         raise SystemExit("pinned fs.c inflate failure block did not match exactly once")
     patched = text.replace(OLD, NEW)
+    if patched.count(INFLATE_READ_ERROR_OLD) != 2:
+        raise SystemExit("pinned fs.c inflate read failures did not match exactly twice")
+    patched = patched.replace(INFLATE_READ_ERROR_OLD, INFLATE_READ_ERROR_NEW)
+    if patched.count(LOAD_FILE_OLD) != 1:
+        raise SystemExit("pinned fs.c load-file locals did not match exactly once")
+    patched = patched.replace(LOAD_FILE_OLD, LOAD_FILE_NEW)
+    if patched.count(LOAD_FILE_READ_OLD) != 1:
+        raise SystemExit("pinned fs.c load-file read did not match exactly once")
+    patched = patched.replace(LOAD_FILE_READ_OLD, LOAD_FILE_READ_NEW)
     output.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=output.name + ".", dir=output.parent)
     try:

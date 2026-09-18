@@ -97,6 +97,24 @@ const xbox_memory_policy_t *Xbox_MemoryProfilePolicy(void)
 	return &xbox_memory_policy;
 }
 
+void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
+	int64_t actual)
+{
+	uint64_t total_bytes, available_bytes;
+	if (Xbox_MemorySnapshot(&total_bytes, &available_bytes))
+		Xbox_BootTraceMark(
+			"Xbox memory load failure path=%s expected=%lld actual=%lld "
+			"available_pages=%llu available=%llu MiB",
+			path ? path : "(null)", (long long)expected, (long long)actual,
+			(unsigned long long)(available_bytes / PAGE_SIZE),
+			(unsigned long long)(available_bytes / XBOX_MIB));
+	else
+		Xbox_BootTraceMark(
+			"Xbox memory load failure path=%s expected=%lld actual=%lld "
+			"available=unavailable",
+			path ? path : "(null)", (long long)expected, (long long)actual);
+}
+
 static int Xbox_MemoryReadRuntimeValues(xbox_memory_runtime_values_t *values,
 	cvar_t **variables)
 {

@@ -161,6 +161,14 @@ int main(int argc, char **argv)
 	registered_command();
 	assert(strstr(trace_text, "available=unavailable"));
 
+	reset(64, 18);
+	assert(Xbox_MemoryProfileInitialize(path));
+	query_available_bytes = 7 * MIB + 5 * PAGE_SIZE;
+	Xbox_MemoryTraceLoadFailure("gfx/menu/background.tga", 8388652, 4096);
+	assert(strstr(trace_text,
+		"load failure path=gfx/menu/background.tga expected=8388652 "
+		"actual=4096 available_pages=1797 available=7 MiB"));
+
 	write_token(path, "xemu64\n");
 	reset(128, 80);
 	assert(Xbox_MemoryProfileInitialize(path));

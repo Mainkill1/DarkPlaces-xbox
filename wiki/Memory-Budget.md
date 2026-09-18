@@ -100,6 +100,19 @@ before/after values and a `retail64_ceiling_violations` count for the five
 controls above; that count is not a substitute for the still-missing complete
 runtime allocation ledger.
 
+The 2026-09-18 follow-up 64 MiB trace confirmed that `retail64` was selected
+and applied before autoplay (`snd_precache 1->0`, `r_precachetextures 1->0`).
+The run reached the same visible point but did not repeat the earlier sound
+allocation failure. Instead, packed-file inflation returned short and the
+legacy loader passed the partially filled buffer into the TGA decoder, which
+then failed at `image.c:435`. The Xbox materialized filesystem source now
+rejects and frees incomplete reads rather than treating them as valid assets,
+and records the asset path, expected/actual byte counts, zlib result, and
+current available physical page count. Both staged PK3 files also pass complete
+`unzip -tq` validation, isolating the failure to the runtime read/decompression
+boundary rather than the packaged payload. This is a source/build gate until
+another xemu run shows the next runtime boundary.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;
