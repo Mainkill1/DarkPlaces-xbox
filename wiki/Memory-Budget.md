@@ -86,7 +86,7 @@ settings:
 | Runtime control | Retail/xemu64 setting |
 |---|---:|
 | `gl_max_size` | 1024 maximum |
-| `gl_picmip` | 1 minimum |
+| `gl_picmip` | 2 minimum |
 | `r_picmipworld` | 1 minimum |
 | `r_precachetextures` | exactly 1 |
 | `snd_precache` | 0 maximum |
@@ -157,6 +157,18 @@ player pants/shirt color layers remain enabled. The source contract now avoids
 the two optional allocations at the demonstrated first-material boundary, but
 the resulting stock-memory peak, map-load gate, and gameplay gate remain
 unverified.
+
+The following stock-memory capture confirmed that fallback removed the normal
+and gloss uploads and advanced through several additional `strength` material
+families. The next failure was again a controlled `image.c:435` allocation
+while decoding `textures/eX/eXmetalBase07rust`, after the preceding upload left
+170 physical pages (about 680 KiB) available. This is cumulative diffuse/glow
+residency rather than the earlier three-layer spike. `retail64` and `xemu64`
+therefore now enforce `gl_picmip >= 2`; compared with the previously observed
+256x256 base uploads, the next mip level uses one quarter of the texel storage.
+`dev128` remains diagnostic and preserves its saved value. This is an isolated
+candidate for the next stock-memory run, not evidence that the map loads or
+that its final visual quality is acceptable.
 
 ## Required instrumentation
 

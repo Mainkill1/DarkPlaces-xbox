@@ -44,14 +44,14 @@ int main(void)
 
 	policy = select_policy(64, "auto", XBOX_MEMORY_SELECT_OK);
 	values.gl_max_size = 2048;
-	values.gl_picmip = 0;
+	values.gl_picmip = 1;
 	values.r_picmipworld = 0;
 	values.r_precachetextures = 2;
 	values.snd_precache = 1;
 	values.snd_streaming = 0;
 	Xbox_MemoryPolicyClamp(&policy, &values);
 	assert(values.gl_max_size == 1024);
-	assert(values.gl_picmip == 1);
+	assert(values.gl_picmip == 2);
 	assert(values.r_picmipworld == 1);
 	assert(values.r_precachetextures == 1);
 	assert(values.snd_precache == 0);

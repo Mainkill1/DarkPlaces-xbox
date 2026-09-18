@@ -131,14 +131,14 @@ int main(int argc, char **argv)
 	assert(registered_command);
 	registered_command();
 	assert(cvars[0].integer == 1024);
-	assert(cvars[1].integer == 1);
+	assert(cvars[1].integer == 2);
 	assert(cvars[2].integer == 1);
 	assert(cvars[3].integer == 1);
 	assert(cvars[4].integer == 0);
 	assert(cvars[5].integer == 1);
 	assert(strstr(trace_text, "applied profile=retail64"));
 	assert(strstr(trace_text, "gl_max_size=2048->1024"));
-	assert(strstr(trace_text, "gl_picmip=0->1"));
+	assert(strstr(trace_text, "gl_picmip=0->2"));
 	assert(strstr(trace_text, "picmip_world=0->1"));
 	assert(strstr(trace_text, "texture_precache=2->1"));
 	assert(strstr(trace_text, "sound_precache=1->0"));
@@ -185,6 +185,9 @@ int main(int argc, char **argv)
 	assert(Xbox_MemoryProfilePolicy()->profile == XBOX_MEMORY_PROFILE_XEMU64);
 	assert(!Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 	assert(strstr(trace_text, "request=xemu64"));
+	Xbox_MemoryProfileRegisterCommands();
+	registered_command();
+	assert(cvars[1].integer == 2);
 
 	write_token(path, "dev128");
 	reset(64, 18);
