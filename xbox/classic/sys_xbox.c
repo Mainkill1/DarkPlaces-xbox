@@ -15,6 +15,7 @@
 
 #include "quakedef.h"
 #include "include/xbox_boot_trace.h"
+#include "include/xbox_memory_profile.h"
 #include "include/xbox_network.h"
 #include "include/xbox_storage.h"
 #include "include/xbox_zlib.h"
@@ -22,6 +23,7 @@
 #define XBOX_BASEDIR "D:/"
 #define XBOX_USERDIR "E:/UDATA/Nexuiz"
 #define XBOX_BOOT_TRACE "E:\\UDATA\\Nexuiz\\boot-trace.txt"
+#define XBOX_MEMORY_PROFILE_OVERRIDE "E:\\UDATA\\Nexuiz\\memory-profile.txt"
 
 static void *Xbox_StaticSymbol(const char *name)
 {
@@ -172,6 +174,7 @@ void Sys_InitConsole(void)
 
 void Sys_Init_Commands(void)
 {
+	Xbox_MemoryProfileRegisterCommands();
 }
 
 int main(int argc, char **argv)
@@ -204,6 +207,13 @@ int main(int argc, char **argv)
 	Xbox_BootTraceMark("main entered; debug framebuffer active");
 	debugPrint("Nexuiz Xbox: starting DarkPlaces...\n");
 	debugPrint("Nexuiz Xbox: basedir=D:/ userdir=E:/UDATA/Nexuiz\n");
+	if (!Xbox_MemoryProfileInitialize(XBOX_MEMORY_PROFILE_OVERRIDE))
+	{
+		debugPrint("Nexuiz Xbox: unable to query physical memory\n");
+		Xbox_BootTraceMark("FATAL: unable to query physical memory");
+		Xbox_BootTraceClose();
+		return 1;
+	}
 
 	/* The disc root is read-only game content. DarkPlaces' existing -userdir
 	 * support adds userdir/data after basedir/data, so saved config, demos,

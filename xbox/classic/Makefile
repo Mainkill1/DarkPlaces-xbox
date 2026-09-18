@@ -69,6 +69,8 @@ VORBIS_SRCS := $(addprefix $(VORBIS_DIR)/lib/,$(VORBIS_CORE_NAMES)) \
 
 PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/sys_xbox.c \
+	$(CLASSIC_PORT_DIR)/memory_policy_xbox.c \
+	$(CLASSIC_PORT_DIR)/memory_profile_xbox.c \
 	$(CLASSIC_PORT_DIR)/vid_xbox.c \
 	$(CLASSIC_PORT_DIR)/gl_compat.c \
 	$(CLASSIC_PORT_DIR)/gl_upload_xbox.c \

@@ -128,6 +128,18 @@ The Xbox defaults preserve:
 - uncapped benchmark-friendly presentation settings;
 - zero-action demo startup and controller takeover/restart behavior.
 
+They also invoke `xbox_apply_memory_profile` after normal saved configuration
+has loaded and before autoplay begins. The XBE selects `retail64` below 112 MiB
+of detected physical memory and `dev128` at or above 112 MiB. `dev128` is a
+diagnostic profile and does not count as stock-memory acceptance.
+
+For controlled testing, create
+`E:\UDATA\Nexuiz\memory-profile.txt` containing exactly `retail64`, `dev128`,
+or `xemu64`. `xemu64` applies retail ceilings even with expanded emulator
+memory. An unsafe `dev128` request on a smaller-memory system falls back to
+`retail64`; invalid values return to automatic selection. The immutable engine
+array limits remain conservative in every profile.
+
 ## What this does not prove
 
 A successful host build is only the compile/link/package gate. Before describing the port as working, the produced artifacts still need explicit evidence for:

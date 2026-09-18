@@ -42,11 +42,63 @@ the immutable engine checkout:
 | Sounds | 4,096 | 2,048 |
 | Server-browser entries | 2,048 | 256 |
 
-The resulting PE `SizeOfImage` is 21,524,480 bytes, reclaiming 13,565,952 bytes
+The resulting PE `SizeOfImage` is 21,528,576 bytes, reclaiming 13,561,856 bytes
 before runtime heap and GPU allocation. `xbox/release` rejects a classic PE over
 24 MiB. This is a static-footprint gate, not proof of the complete 64 MiB runtime
 gate; map loading, offline play, LAN hosting, transitions, and soak still require
 measured high-water evidence.
+
+## Classic runtime profile selection
+
+The next stock-memory trace advanced through the first completed framebuffer
+swap, stereo-audio initialization, and Nexuiz gamecode loading. It then failed
+while allocating a decoded sound buffer in `snd_mem.c:90`. This is later than
+the prior texture-management failure, but it is still an allocation failure
+before a complete map/gameplay route.
+
+The classic candidate now queries `MmQueryStatistics` before `Host_Main` and
+uses one XBE for three runtime profiles:
+
+| Selection | Condition | Policy |
+|---|---|---|
+| `retail64` | automatic below 112 MiB, or explicit | Stock-memory ceilings |
+| `dev128` | automatic at or above 112 MiB, or a safe explicit request | Larger system heap; diagnostic only |
+| `xemu64` | explicit | Retail ceilings even when xemu exposes more memory |
+
+The gap below 112 MiB deliberately selects `retail64`; the code does not infer
+that an unusual intermediate capacity is safe for `dev128`. To override the
+automatic choice, place exactly one of `retail64`, `dev128`, or `xemu64` in:
+
+```text
+E:\UDATA\Nexuiz\memory-profile.txt
+```
+
+An invalid value returns to automatic selection. A `dev128` request below the
+112 MiB threshold is rejected and safely falls back to `retail64`. The durable
+boot trace records the requested/selected profile plus total and available
+physical memory.
+
+The structural limits in the preceding table stay identical for all profiles;
+they determine static array and executable size. After saved configuration is
+loaded and before autoplay begins, `retail64` and `xemu64` only tighten values
+that exceed their ceilings:
+
+| Runtime control | Retail/xemu64 ceiling |
+|---|---:|
+| `gl_max_size` | 1024 maximum |
+| `gl_picmip` | 1 minimum |
+| `r_precachetextures` | 0 maximum |
+| `snd_precache` | 0 maximum |
+| `snd_streaming` | 1 minimum |
+
+More conservative saved graphics choices are preserved. `dev128` does not
+replace user choices and can benefit from its larger normal heap, but the
+current classic renderer still lacks the complete arena/cache/eviction ledger
+needed to quantify retail-equivalent violations. A `dev128` run is therefore
+reported as diagnostic-only, never as 64 MiB acceptance. The trace reports
+before/after values and a `retail64_ceiling_violations` count for the five
+controls above; that count is not a substitute for the still-missing complete
+runtime allocation ledger.
 
 ## Required instrumentation
 

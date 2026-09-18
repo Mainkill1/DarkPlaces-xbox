@@ -1,0 +1,10 @@
+#ifndef XBOX_MEMORY_PROFILE_H
+#define XBOX_MEMORY_PROFILE_H
+
+#include "xbox_memory_policy.h"
+
+int Xbox_MemoryProfileInitialize(const char *override_path);
+const xbox_memory_policy_t *Xbox_MemoryProfilePolicy(void);
+void Xbox_MemoryProfileRegisterCommands(void);
+
+#endif

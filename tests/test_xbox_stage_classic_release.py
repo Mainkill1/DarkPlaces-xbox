@@ -58,6 +58,24 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             self.assertTrue(text.startswith("set oldvalue 1\n"))
             self.assertTrue(text.rstrip().endswith("exec xbox-defaults.cfg"))
 
+    def test_memory_profile_is_applied_before_autoplay(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            archive, digest = self.make_archive(
+                root, {"Nexuiz/data/data.pk3": b"pk3"}
+            )
+            disc = root / "disc"
+            stage_classic_release.stage_release(archive, disc, digest)
+            defaults = (disc / "data" / "xbox-defaults.cfg").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("xbox_apply_memory_profile", defaults)
+            profile = defaults.index("xbox_apply_memory_profile")
+            auto_quality = defaults.index("cl_minfps_force 0")
+            autoplay = defaults.index("xbox_demo_start")
+            self.assertLess(auto_quality, profile)
+            self.assertLess(profile, autoplay)
+
     def test_stage_rejects_archive_sha_mismatch(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

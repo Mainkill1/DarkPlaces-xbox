@@ -51,6 +51,7 @@ cl_minfps 0
 cl_minfps_force 0
 cl_minfps_qualitymin 1
 cl_minfps_qualitymax 1
+xbox_apply_memory_profile
 alias xbox_demo_start "startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake"
 xbox_demo_start
 """
