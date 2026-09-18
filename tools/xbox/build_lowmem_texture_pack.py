@@ -17,7 +17,8 @@ MAX_SOURCE_BYTES = 64 * 1024 * 1024
 MANIFEST_NAME = "xbox-lowmem-manifest.json"
 ZIP_TIME = (1980, 1, 1, 0, 0, 0)
 EXTERNAL_LIGHTMAP = re.compile(r"maps/[^/]+/lm_[0-9]{4}\.tga\Z", re.IGNORECASE)
-EXTERNAL_LIGHTMAP_DIMENSION = 128
+STOCK_MAX_DIMENSION = 256
+EXTERNAL_LIGHTMAP_DIMENSION = 64
 
 
 class TexturePackError(ValueError):
@@ -75,29 +76,56 @@ def decode_tga(data: bytes) -> TgaImage:
     if len(data) < 18:
         raise TexturePackError("truncated TGA header")
     id_length, color_map_type, image_type = data[0], data[1], data[2]
+    color_map_first = int.from_bytes(data[3:5], "little")
+    color_map_length = int.from_bytes(data[5:7], "little")
+    color_map_depth = data[7]
     width = int.from_bytes(data[12:14], "little")
     height = int.from_bytes(data[14:16], "little")
     depth, descriptor = data[16], data[17]
-    if color_map_type != 0:
-        raise TexturePackError("color-mapped TGA is not supported by the low-memory converter")
-    formats = {
-        (2, 24): ("RGB", 3, False),
-        (2, 32): ("RGBA", 4, False),
-        (3, 8): ("L", 1, False),
-        (10, 24): ("RGB", 3, True),
-        (10, 32): ("RGBA", 4, True),
-        (11, 8): ("L", 1, True),
-    }
-    try:
-        mode, channels, rle = formats[(image_type, depth)]
-    except KeyError as exc:
-        raise TexturePackError(f"unsupported TGA type/depth: {image_type}/{depth}") from exc
     if width <= 0 or height <= 0 or descriptor & 0xC0:
         raise TexturePackError("invalid TGA dimensions or interleave mode")
     offset = 18 + id_length
     if offset > len(data):
         raise TexturePackError("truncated TGA image identifier")
-    file_pixels = _read_tga_pixels(data, offset, width * height, channels, rle)
+    if color_map_type == 1:
+        if image_type not in (1, 9) or depth != 8 or color_map_depth not in (24, 32):
+            raise TexturePackError(
+                f"unsupported color-mapped TGA type/depth: {image_type}/{depth}/{color_map_depth}"
+            )
+        if color_map_length <= 0:
+            raise TexturePackError("color-mapped TGA has an empty palette")
+        channels = color_map_depth // 8
+        mode = "RGBA" if channels == 4 else "RGB"
+        palette_end = offset + color_map_length * channels
+        if palette_end > len(data):
+            raise TexturePackError("truncated TGA palette")
+        palette = []
+        for position in range(offset, palette_end, channels):
+            entry = data[position:position + channels]
+            palette.append(bytes((entry[2], entry[1], entry[0])) + entry[3:])
+        indices = _read_tga_pixels(data, palette_end, width * height, 1, image_type == 9)
+        file_pixels = []
+        for raw_index in indices:
+            index = raw_index[0] - color_map_first
+            if index < 0 or index >= color_map_length:
+                raise TexturePackError(f"TGA palette index is out of range: {raw_index[0]}")
+            file_pixels.append(palette[index])
+    else:
+        if color_map_type != 0:
+            raise TexturePackError(f"unsupported TGA color-map type: {color_map_type}")
+        formats = {
+            (2, 24): ("RGB", 3, False),
+            (2, 32): ("RGBA", 4, False),
+            (3, 8): ("L", 1, False),
+            (10, 24): ("RGB", 3, True),
+            (10, 32): ("RGBA", 4, True),
+            (11, 8): ("L", 1, True),
+        }
+        try:
+            mode, channels, rle = formats[(image_type, depth)]
+        except KeyError as exc:
+            raise TexturePackError(f"unsupported TGA type/depth: {image_type}/{depth}") from exc
+        file_pixels = _read_tga_pixels(data, offset, width * height, channels, rle)
     top_origin = bool(descriptor & 0x20)
     right_origin = bool(descriptor & 0x10)
     output = bytearray(width * height * channels)
@@ -105,7 +133,7 @@ def decode_tga(data: bytes) -> TgaImage:
         file_y, file_x = divmod(file_index, width)
         y = file_y if top_origin else height - 1 - file_y
         x = width - 1 - file_x if right_origin else file_x
-        if mode in ("RGB", "RGBA"):
+        if color_map_type == 0 and mode in ("RGB", "RGBA"):
             pixel = bytes((pixel[2], pixel[1], pixel[0])) + pixel[3:]
         target = (y * width + x) * channels
         output[target:target + channels] = pixel
@@ -197,7 +225,7 @@ def _sha256(data: bytes) -> str:
 def build_pack(
     pk3_paths: list[Path],
     output_path: Path,
-    max_dimension: int = 512,
+    max_dimension: int = STOCK_MAX_DIMENSION,
     external_lightmap_dimension: int = EXTERNAL_LIGHTMAP_DIMENSION,
 ) -> dict:
     if not pk3_paths:
@@ -305,7 +333,7 @@ def build_pack(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--max-dimension", type=int, default=512)
+    parser.add_argument("--max-dimension", type=int, default=STOCK_MAX_DIMENSION)
     parser.add_argument("pk3", nargs="+", type=Path)
     args = parser.parse_args(argv)
     try:

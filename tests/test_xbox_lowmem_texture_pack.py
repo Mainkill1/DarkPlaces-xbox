@@ -40,6 +40,22 @@ def tga(width, height, mode, pixels, *, rle=False, top=True, right=False):
     return bytes(header) + bytes((len(ordered) - 1,)) + b"".join(ordered)
 
 
+def paletted_tga(indices, *, rle=False):
+    header = bytearray(18)
+    header[1] = 1
+    header[2] = 9 if rle else 1
+    header[3:5] = (5).to_bytes(2, "little")
+    header[5:7] = (2).to_bytes(2, "little")
+    header[7] = 24
+    header[12:14] = (2).to_bytes(2, "little")
+    header[14:16] = (1).to_bytes(2, "little")
+    header[16] = 8
+    header[17] = 0x20
+    palette_bgr = bytes((0, 0, 255, 0, 255, 0))
+    body = bytes((len(indices) - 1, *indices)) if rle else bytes(indices)
+    return bytes(header) + palette_bgr + body
+
+
 class TgaConversionTests(unittest.TestCase):
     def test_decodes_truecolor_grayscale_rle_and_orientation(self):
         rgb = bytes((255, 0, 0, 0, 255, 0, 0, 0, 255, 10, 20, 30))
@@ -51,6 +67,13 @@ class TgaConversionTests(unittest.TestCase):
                     self.assertEqual(image.pixels, rgb)
         gray = lowmem.decode_tga(tga(2, 1, "L", bytes((17, 231)), rle=True))
         self.assertEqual((gray.mode, gray.pixels), ("L", bytes((17, 231))))
+
+    def test_decodes_raw_and_rle_color_mapped_tga_and_rejects_bad_index(self):
+        expected = lowmem.TgaImage(2, 1, "RGB", bytes((255, 0, 0, 0, 255, 0)))
+        self.assertEqual(lowmem.decode_tga(paletted_tga((5, 6))), expected)
+        self.assertEqual(lowmem.decode_tga(paletted_tga((5, 6), rle=True)), expected)
+        with self.assertRaisesRegex(lowmem.TexturePackError, "palette index"):
+            lowmem.decode_tga(paletted_tga((5, 7)))
 
     def test_half_scale_uses_premultiplied_alpha_and_bounds_odd_dimensions(self):
         # Three fully transparent colored pixels must not darken the sole opaque red pixel.
@@ -138,7 +161,7 @@ class PackBuilderTests(unittest.TestCase):
             with self.assertRaises(lowmem.TexturePackError):
                 lowmem.build_pack([pack], root / "output.pk3", max_dimension=512)
 
-    def test_external_lightmaps_use_the_stock_128_pixel_limit(self):
+    def test_stock_profile_uses_256_material_and_64_lightmap_limits(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             pack = root / "input.pk3"
@@ -150,16 +173,21 @@ class PackBuilderTests(unittest.TestCase):
             })
 
             output = root / "output.pk3"
-            manifest = lowmem.build_pack([pack], output, max_dimension=512)
+            manifest = lowmem.build_pack([pack], output)
 
-            self.assertEqual(manifest["external_lightmap_dimension"], 128)
-            self.assertEqual(manifest["asset_count"], 1)
-            self.assertEqual(manifest["assets"][0]["path"], "maps/strength/lm_0000.tga")
-            self.assertEqual(manifest["assets"][0]["output_dimensions"], [128, 128])
+            self.assertEqual(lowmem.STOCK_MAX_DIMENSION, 256)
+            self.assertEqual(lowmem.EXTERNAL_LIGHTMAP_DIMENSION, 64)
+            self.assertEqual(manifest["max_dimension"], 256)
+            self.assertEqual(manifest["external_lightmap_dimension"], 64)
+            self.assertEqual(manifest["asset_count"], 2)
+            assets = {asset["path"]: asset for asset in manifest["assets"]}
+            self.assertEqual(assets["textures/exactly-512.tga"]["output_dimensions"], [256, 256])
+            self.assertEqual(assets["maps/strength/lm_0000.tga"]["output_dimensions"], [64, 64])
             with zipfile.ZipFile(output) as zf:
-                self.assertNotIn("textures/exactly-512.tga", zf.namelist())
-                converted = lowmem.decode_tga(zf.read("maps/strength/lm_0000.tga"))
-                self.assertEqual((converted.width, converted.height), (128, 128))
+                material = lowmem.decode_tga(zf.read("textures/exactly-512.tga"))
+                lightmap = lowmem.decode_tga(zf.read("maps/strength/lm_0000.tga"))
+                self.assertEqual((material.width, material.height), (256, 256))
+                self.assertEqual((lightmap.width, lightmap.height), (64, 64))
 
 
 if __name__ == "__main__":

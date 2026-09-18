@@ -14,6 +14,8 @@ from typing import Any
 RELEASE = "nexuiz-xbox-2.5.2"
 HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 CHUNK = 1024 * 1024
+STOCK_MAX_DIMENSION = 256
+EXTERNAL_LIGHTMAP_DIMENSION = 64
 
 
 class ReleaseTreeError(ValueError):
@@ -89,8 +91,8 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
     if (
         derived["path"] != "data/zzzz-xbox-lowmem.pk3"
         or derived["profile"] != "stock64"
-        or derived["max_dimension"] != 512
-        or derived["external_lightmap_dimension"] != 128
+        or derived["max_dimension"] != STOCK_MAX_DIMENSION
+        or derived["external_lightmap_dimension"] != EXTERNAL_LIGHTMAP_DIMENSION
         or derived["filter"] != "repeated-2x2-box-premultiplied-alpha"
         or derived["entry_storage"] != "stored"
         or type(derived["asset_count"]) is not int

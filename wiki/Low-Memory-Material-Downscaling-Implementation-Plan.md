@@ -14,8 +14,8 @@
 
 - `xbox/release` remains the only end-to-end release route.
 - The verified Nexuiz archive and original PK3 files remain immutable.
-- Both image dimensions must be at most 512 pixels in generated overrides.
-- External `maps/<map>/lm_NNNN.tga` lightmaps must be at most 128x128.
+- Both image dimensions must be at most 256 pixels in generated overrides.
+- External `maps/<map>/lm_NNNN.tga` lightmaps must be at most 64x64.
 - Output ZIP entries are stored, sorted, and carry fixed metadata.
 - 64 MiB is the acceptance target; 128 MiB remains diagnostic-only.
 - No third-party host image library is introduced.
@@ -30,7 +30,7 @@
 
 **Interfaces:**
 - Consumes: TGA bytes from a PK3 entry.
-- Produces: `decode_tga(data) -> TgaImage`, `downscale_to_limit(image, 512) -> TgaImage`, and `encode_tga(image) -> bytes`.
+- Produces: `decode_tga(data) -> TgaImage`, `downscale_to_limit(image, 256) -> TgaImage`, and `encode_tga(image) -> bytes`.
 
 - [ ] Write fixtures proving 24/32-bit true-color, grayscale, RLE, orientation, alpha-aware filtering, dimension bounds, and malformed input rejection.
 - [ ] Run `python3 -m unittest tests.test_xbox_lowmem_texture_pack -v` and confirm failures because the module does not exist.
@@ -44,7 +44,7 @@
 - Modify: `tests/test_xbox_lowmem_texture_pack.py`
 
 **Interfaces:**
-- Consumes: `build_pack(pk3_paths, output_path, max_dimension=512)` with PK3 paths in engine load order.
+- Consumes: `build_pack(pk3_paths, output_path, max_dimension=256)` with PK3 paths in engine load order.
 - Produces: manifest dictionary plus `zzzz-xbox-lowmem.pk3` with original virtual paths and `xbox-lowmem-manifest.json`.
 
 - [ ] Add failing tests for cross-pack precedence, unchanged small-image omission, stored entries, fixed metadata, sorted names, output hashes, and identical bytes across two builds.

@@ -60,7 +60,7 @@ The generated `CONTENT-IDENTITY.json` records:
 - path, byte size and SHA-256 for every staged file.
 
 For the stock-memory candidate, staging additionally creates
-`zzzz-xbox-lowmem.pk3` from effective TGA assets larger than 512 pixels on
+`zzzz-xbox-lowmem.pk3` from effective TGA assets larger than 256 pixels on
 either axis. The derived pack is deterministic and records source/output hashes
 and dimensions in its embedded manifest; `CONTENT-IDENTITY.json` records the
 final pack hash. The source PK3s are not edited. This local engineering
@@ -68,7 +68,7 @@ derivative is subject to the same source attribution and redistribution audit
 as its inputs and must not be committed as a substitute for the external
 archive.
 
-The same generated pack applies a stricter 128x128 bound to external Q3
+The same generated pack applies a stricter 64x64 bound to external Q3
 lightmaps matching `maps/<map>/lm_NNNN.tga`; this path-specific policy is also
 recorded in both manifests.
 

@@ -60,7 +60,7 @@ xbox_demo_start
 """
 AUTOEXEC_LINE = "exec xbox-defaults.cfg"
 LOWMEM_PACK_NAME = "zzzz-xbox-lowmem.pk3"
-LOWMEM_MAX_DIMENSION = 512
+LOWMEM_MAX_DIMENSION = build_lowmem_texture_pack.STOCK_MAX_DIMENSION
 
 
 class StageError(ValueError):

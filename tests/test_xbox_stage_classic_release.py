@@ -58,8 +58,8 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             derived = saved["derived_content"]
             self.assertEqual(derived["path"], "data/zzzz-xbox-lowmem.pk3")
             self.assertEqual(derived["asset_count"], 0)
-            self.assertEqual(derived["max_dimension"], 512)
-            self.assertEqual(derived["external_lightmap_dimension"], 128)
+            self.assertEqual(derived["max_dimension"], 256)
+            self.assertEqual(derived["external_lightmap_dimension"], 64)
             generated = disc / derived["path"]
             self.assertEqual(derived["bytes"], generated.stat().st_size)
             self.assertEqual(derived["sha256"], hashlib.sha256(generated.read_bytes()).hexdigest())
@@ -181,7 +181,7 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             identity = stage_classic_release.stage_release(archive, disc, digest)
             with zipfile.ZipFile(disc / "data" / "zzzz-xbox-lowmem.pk3") as zf:
                 converted = zf.read("textures/huge.tga")
-                self.assertEqual(int.from_bytes(converted[12:14], "little"), 512)
+                self.assertEqual(int.from_bytes(converted[12:14], "little"), 256)
                 self.assertEqual(zf.getinfo("textures/huge.tga").compress_type, zipfile.ZIP_STORED)
             self.assertEqual(identity["derived_content"]["asset_count"], 1)
 

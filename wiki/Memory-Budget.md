@@ -241,6 +241,26 @@ and total-face counts. Permanent surfaces and all tessellation behavior remain
 unchanged. This advances the diagnosed source/build boundary; a new 64 MiB run
 must establish the next runtime gate.
 
+That run confirmed the patch-only allocation and then failed at
+`model_shared.c:917`, where `Mod_AllocSurfMesh` creates the permanent combined
+world mesh. Strength's flat and mesh faces alone require at least 3,034,852
+bytes for the requested vertex/color/tangent/texcoord and 32/16-bit index
+arrays, before its 20 patches are added. Only 173 physical pages (about 692
+KiB) remained at the end of lightmap uploads. This is a resident-budget
+shortfall, not another oversized temporary array. The canonical stock-content
+policy now reduces every effective TGA to at most 256x256 and external
+lightmaps to 64x64. For the observed Strength upload dimensions, those two
+ceiling changes target more than 2.4 MiB of resident color/lightmap reduction;
+runtime picmip can reduce ordinary world materials further. Originals and the
+diagnostic/profile split remain unchanged. Packaging evidence does not establish
+that the resulting world mesh allocates or the map renders.
+
+Complete host staging accepts the tighter policy and all newly selected source
+formats. It converts 1,952 effective TGAs into a deterministic 246,640,469-byte
+stored override pack. The larger disc payload is not resident memory: stored
+entries deliberately trade XISO space for bounded 256 KiB general and 16 KiB
+external-lightmap decoded images without a simultaneous DEFLATE workspace.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

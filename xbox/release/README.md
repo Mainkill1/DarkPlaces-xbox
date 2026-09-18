@@ -122,15 +122,15 @@ xbox/release/out/
 The XISO is staged from the **complete Nexuiz 2.5.2 `data/` tree**, not a benchmark-only subset. The stager adds `xbox-defaults.cfg` and appends `exec xbox-defaults.cfg` to an existing `autoexec.cfg` instead of replacing the game's original startup configuration.
 
 Staging also generates `data/zzzz-xbox-lowmem.pk3` from the verified original
-PK3s. Effective TGA assets larger than 512 pixels on either axis are reduced by
+PK3s. Effective TGA assets larger than 256 pixels on either axis are reduced by
 deterministic repeated box filtering. Generated images are uncompressed TGA
-entries in a stored PK3, bounding the runtime source image to at most 1 MiB and
+entries in a stored PK3, bounding the runtime source image to at most 256 KiB and
 avoiding a DEFLATE workspace for those overrides. The original PK3 bytes are
 unchanged. `CONTENT-IDENTITY.json` records the generated pack policy, asset
 count, byte size, and SHA-256; the normal tree and XISO verifiers cover it.
 See [Low-Memory Material Downscaling](../../wiki/Low-Memory-Material-Downscaling.md).
 
-External Q3 lightmaps named `maps/<map>/lm_NNNN.tga` have a stricter 128x128
+External Q3 lightmaps named `maps/<map>/lm_NNNN.tga` have a stricter 64x64
 ceiling. The Xbox classic build validates the external set and then decodes,
 converts, uploads, and frees one image at a time; it does not apply normal world
 picmip to the resulting GPU textures. The separate ceiling bounds transient
