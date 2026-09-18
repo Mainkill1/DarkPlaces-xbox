@@ -69,9 +69,9 @@ static void Xbox_glTexImage1D(GLenum target, GLint level, GLint internalformat,
 }
 
 static void Xbox_glTexSubImage1D(GLenum target, GLint level, GLint xoffset,
-	GLint x, GLint y, GLsizei width, GLenum format, GLenum type, const GLvoid *pixels)
+	GLsizei width, GLenum format, GLenum type, const GLvoid *pixels)
 {
-	(void)target; (void)x; (void)y;
+	(void)target;
 	glTexSubImage2D(GL_TEXTURE_2D, level, xoffset, 0, width, 1, format, type, pixels);
 }
 

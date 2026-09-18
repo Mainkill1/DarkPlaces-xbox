@@ -10,6 +10,7 @@
 #include "quakedef.h"
 #include "../attract_policy.h"
 #include "include/xbox_boot_trace.h"
+#include "include/xbox_gl_bootstrap.h"
 #include "include/xbox_network.h"
 
 int cl_available = true;
@@ -294,7 +295,8 @@ void VID_Init(void)
 
 int VID_InitMode(int fullscreen, int *width, int *height, int bpp, int refreshrate, int stereobuffer, int samples)
 {
-	int pbgl_result;
+	int pbgl_result = 0;
+	int bootstrap_result;
 
 	(void)fullscreen; (void)bpp; (void)refreshrate; (void)stereobuffer; (void)samples;
 	Xbox_BootTraceMark("VID_InitMode enter");
@@ -313,8 +315,16 @@ int VID_InitMode(int fullscreen, int *width, int *height, int bpp, int refreshra
 		Xbox_BootTraceMark("pbgl_init begin");
 		pbgl_result = pbgl_init(GL_TRUE);
 		Xbox_BootTraceMark("pbgl_init returned %d", pbgl_result);
-		pbgl_started = true;
 	}
+	bootstrap_result = Xbox_GLBootstrap(pbgl_result);
+	if (bootstrap_result != XBOX_GL_BOOTSTRAP_OK)
+	{
+		Con_Printf("Xbox GL bootstrap failed: %d\n", bootstrap_result);
+		if (!pbgl_started && pbgl_result == 0)
+			pbgl_shutdown();
+		return false;
+	}
+	pbgl_started = true;
 	gl_platform = "pbGL/NV2A";
 	gl_platformextensions = "";
 	gl_videosyncavailable = false;

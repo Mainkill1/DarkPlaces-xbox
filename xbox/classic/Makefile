@@ -66,6 +66,7 @@ PORT_SRCS := \
 	$(CLASSIC_PORT_DIR)/sys_xbox.c \
 	$(CLASSIC_PORT_DIR)/vid_xbox.c \
 	$(CLASSIC_PORT_DIR)/gl_compat.c \
+	$(CLASSIC_PORT_DIR)/gl_bootstrap_xbox.c \
 	$(CLASSIC_PORT_DIR)/boot_trace_xbox.c \
 	$(CLASSIC_PORT_DIR)/storage_xbox.c \
 	$(CLASSIC_PORT_DIR)/path_xbox.c \
