@@ -229,6 +229,18 @@ BSP lightmap ownership is unchanged.
 This is compiled evidence only until a new stock-64-MiB trace reaches the map
 and first-frame gates.
 
+The next stock-memory capture reached `Xbox external lightmap streaming
+complete`, proving that all 28 external images were uploaded and freed through
+the new path. It then failed in `Mod_Q3BSP_LoadFaces` while allocating temporary
+patch-tessellation records. Strength has 5,948 faces but only 20 patch faces;
+the pinned loader allocated a 56-byte record for every face (333,088 bytes)
+although only patch faces populate or read that array (1,120 bytes for this
+map). The Xbox materialized source now pre-counts `Q3FACETYPE_PATCH`, allocates
+exactly that capacity, checks every insertion against it, and traces the patch
+and total-face counts. Permanent surfaces and all tessellation behavior remain
+unchanged. This advances the diagnosed source/build boundary; a new 64 MiB run
+must establish the next runtime gate.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

@@ -11,7 +11,7 @@ This matrix states required policy, **not proof of implementation**. [Option B](
 | BGRA texture input on classic pbGL path | Profiled compatibility conversion with a checked 16 MiB transient staging ceiling; source buffers remain engine-owned and unchanged. `retail64`/`xemu64` use native packed RGBA4 storage to halve residency; diagnostic `dev128` retains RGBA8. Four-bit color/alpha is a deliberate stock-memory approximation. | adapter fixture + GL error checks + native color/alpha chart |
 | `glArrayElement` driver-test path | Disabled; production remains on pbGL `glDrawElements`, and forcing `gl_mesh_testarrayelement` is a deliberate no-op fallback | link audit + native mesh capture |
 | 2D console/menu | Native | text and UI screenshots |
-| Q3 BSP/PVS | Required | full pinned map inventory, not only a demo |
+| Q3 BSP/PVS | Required; the classic Xbox loader bounds temporary patch-tessellation records to actual patch faces rather than every BSP face | full pinned map inventory, patch-capacity trace, not only a demo |
 | Lightmaps | Required | static comparison |
 | Alpha test/blend/additive | Required | stress-zone markers |
 | Fog | Required, approximation allowed | deterministic capture |

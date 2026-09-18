@@ -137,6 +137,11 @@ picmip to the resulting GPU textures. The separate ceiling bounds transient
 and resident use while preserving the loader's required square power-of-two
 input and size-derived UV scaling.
 
+The same generated Xbox `model_brush.c` also pre-counts Q3 patch faces before
+allocating temporary tessellation records. This preserves the pinned loader's
+surface and curve behavior while avoiding one scratch record for every flat BSP
+face; a capacity check fails explicitly if the scan and population ever differ.
+
 The Xbox defaults preserve:
 
 - controller movement/look and combat bindings;

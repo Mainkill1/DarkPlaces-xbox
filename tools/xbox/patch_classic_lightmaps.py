@@ -222,6 +222,47 @@ UPLOAD_END_NEW = '''\
 \tMem_Free(convertedpixels);
 '''
 
+PATCH_DECLARATIONS_OLD = '''\
+\tpatchtess_t *patchtess = NULL;
+\tint patchtesscount = 0;
+\tqboolean again;
+'''
+
+PATCH_DECLARATIONS_NEW = '''\
+\tpatchtess_t *patchtess = NULL;
+\tint patchtesscount = 0;
+\tint patchtesscapacity = 0;
+\tqboolean again;
+'''
+
+PATCH_ALLOCATION_OLD = '''\
+\tif(count > 0)
+\t\tpatchtess = (patchtess_t*) Mem_Alloc(tempmempool, count * sizeof(*patchtess));
+'''
+
+PATCH_ALLOCATION_NEW = '''\
+\t// Xbox: temporary tessellation state is needed only for patch faces.
+\tfor (i = 0; i < count; ++i)
+\t\tif (LittleLong(in[i].type) == Q3FACETYPE_PATCH)
+\t\t\t++patchtesscapacity;
+\tif (patchtesscapacity > 0)
+\t\tpatchtess = (patchtess_t*) Mem_Alloc(tempmempool, patchtesscapacity * sizeof(*patchtess));
+\tif (developer_loading.integer)
+\t\tCon_Printf("Xbox patch tessellation scratch: %i of %i faces, %i bytes\\n", patchtesscapacity, count, patchtesscapacity * (int)sizeof(*patchtess));
+'''
+
+PATCH_STORE_OLD = '''\
+\t\t\t// store it for the LOD grouping step
+\t \t\tpatchtess[patchtesscount].info.xsize = patchsize[0];
+'''
+
+PATCH_STORE_NEW = '''\
+\t\t\t// store it for the LOD grouping step
+\t\t\tif (patchtesscount >= patchtesscapacity)
+\t\t\t\tHost_Error("Mod_Q3BSP_LoadFaces: patch tessellation capacity exceeded in %s", loadmodel->name);
+\t \t\tpatchtess[patchtesscount].info.xsize = patchsize[0];
+'''
+
 
 def materialize(source: Path, output: Path) -> None:
     data = source.read_bytes()
@@ -235,6 +276,9 @@ def materialize(source: Path, output: Path) -> None:
         (BLANK_CHECK_OLD, BLANK_CHECK_NEW, "blank-lightmap check"),
         (UPLOAD_BEGIN_OLD, UPLOAD_BEGIN_NEW, "upload start"),
         (UPLOAD_END_OLD, UPLOAD_END_NEW, "upload cleanup"),
+        (PATCH_DECLARATIONS_OLD, PATCH_DECLARATIONS_NEW, "patch declarations"),
+        (PATCH_ALLOCATION_OLD, PATCH_ALLOCATION_NEW, "patch allocation"),
+        (PATCH_STORE_OLD, PATCH_STORE_NEW, "patch capacity check"),
     )
     for old, new, label in replacements:
         if text.count(old) != 1:

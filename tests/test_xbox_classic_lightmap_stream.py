@@ -15,12 +15,7 @@ MAKEFILE = ROOT / "xbox" / "classic" / "Makefile"
 
 
 class ClassicLightmapStreamTests(unittest.TestCase):
-    def test_external_lightmaps_are_scanned_and_uploaded_with_one_owned_image(self):
-        original = SOURCE.read_bytes()
-        self.assertEqual(
-            hashlib.sha256(original).hexdigest(),
-            "e79ca0cf9b8f6abe179b0aef6d06ab94cfaf4a1107c61c16a14ea6a064d508bc",
-        )
+    def _materialized_source(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "model_brush.c"
             proc = subprocess.run(
@@ -30,7 +25,15 @@ class ClassicLightmapStreamTests(unittest.TestCase):
                 timeout=30,
             )
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-            patched = output.read_text(encoding="utf-8")
+            return output.read_text(encoding="utf-8")
+
+    def test_external_lightmaps_are_scanned_and_uploaded_with_one_owned_image(self):
+        original = SOURCE.read_bytes()
+        self.assertEqual(
+            hashlib.sha256(original).hexdigest(),
+            "e79ca0cf9b8f6abe179b0aef6d06ab94cfaf4a1107c61c16a14ea6a064d508bc",
+        )
+        patched = self._materialized_source()
 
         scan = patched.index("Xbox: count and validate external lightmaps one at a time")
         allocate = patched.index("convertedpixels = (unsigned char *) Mem_Alloc", scan)
@@ -44,6 +47,16 @@ class ClassicLightmapStreamTests(unittest.TestCase):
         self.assertIn("Xbox external lightmap streaming complete", patched)
         self.assertNotIn("inpixels[count] = loadimagepixelsbgra", patched)
         self.assertEqual(SOURCE.read_bytes(), original)
+
+    def test_patch_tessellation_scratch_is_sized_to_patch_faces(self):
+        patched = self._materialized_source()
+
+        self.assertIn("patchtesscapacity = 0;", patched)
+        self.assertIn("++patchtesscapacity;", patched)
+        self.assertIn("patchtesscapacity * sizeof(*patchtess)", patched)
+        self.assertIn("patchtesscount >= patchtesscapacity", patched)
+        self.assertIn("Xbox patch tessellation scratch: %i of %i faces", patched)
+        self.assertNotIn("count * sizeof(*patchtess)", patched)
 
     def test_classic_build_uses_only_the_materialized_model_brush(self):
         text = MAKEFILE.read_text(encoding="utf-8")
