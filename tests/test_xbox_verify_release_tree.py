@@ -40,8 +40,9 @@ def make_disc(root: Path) -> Path:
             "sha256": hashlib.sha256(payload).hexdigest(),
         })
     identity = {
-        "schema_version": 2,
+        "schema_version": 3,
         "release": "nexuiz-xbox-2.5.2",
+        "content_profile": "stock64",
         "source_file": "nexuiz-252.zip",
         "source_sha256": "a" * 64,
         "data_prefix": "Nexuiz/data/",
@@ -65,10 +66,13 @@ def make_disc(root: Path) -> Path:
     (disc / "CONTENT-IDENTITY.json").write_text(content, encoding="utf-8")
     content_hash = hashlib.sha256(content.encode()).hexdigest()
     (disc / "BUILD-IDENTITY.txt").write_text(
-        "release=nexuiz-xbox-2.5.2\ncontent_identity_sha256=" + content_hash + "\n",
+        "release=nexuiz-xbox-2.5.2\ncontent_profile=stock64\n"
+        "content_identity_sha256=" + content_hash + "\n",
         encoding="utf-8",
     )
-    (disc / "default.xbe").write_bytes(b"XBEH" + b"\x00" * 4092)
+    xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+    xbe[0x124:0x128] = (0x5).to_bytes(4, "little")
+    (disc / "default.xbe").write_bytes(xbe)
     return disc
 
 
@@ -100,10 +104,70 @@ class XboxVerifyReleaseTreeTests(unittest.TestCase):
             )
             content_hash = hashlib.sha256(identity_path.read_bytes()).hexdigest()
             (disc / "BUILD-IDENTITY.txt").write_text(
-                "release=nexuiz-xbox-2.5.2\ncontent_identity_sha256=" + content_hash + "\n",
+                "release=nexuiz-xbox-2.5.2\ncontent_profile=stock64\n"
+                "content_identity_sha256=" + content_hash + "\n",
                 encoding="utf-8",
             )
             with self.assertRaisesRegex(tool.ReleaseTreeError, "derived"):
+                tool.verify_tree(disc)
+
+    def test_dev128_tree_has_its_own_bounded_override(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            disc = make_disc(Path(td))
+            override = disc / "data" / "zzzz-xbox-lowmem.pk3"
+            override.rename(disc / "data" / "zzzz-xbox-dev128.pk3")
+            identity_path = disc / "CONTENT-IDENTITY.json"
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            identity["content_profile"] = "dev128"
+            identity["derived_content"]["path"] = "data/zzzz-xbox-dev128.pk3"
+            identity["derived_content"]["profile"] = "dev128"
+            identity["derived_content"]["max_dimension"] = 512
+            identity["derived_content"]["external_lightmap_dimension"] = 128
+            for row in identity["files"]:
+                if row["path"] == "data/zzzz-xbox-lowmem.pk3":
+                    row["path"] = "data/zzzz-xbox-dev128.pk3"
+            identity_path.write_text(
+                json.dumps(identity, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+            )
+            content_hash = hashlib.sha256(identity_path.read_bytes()).hexdigest()
+            (disc / "BUILD-IDENTITY.txt").write_text(
+                "release=nexuiz-xbox-2.5.2\ncontent_profile=dev128\n"
+                "content_identity_sha256=" + content_hash + "\n",
+                encoding="utf-8",
+            )
+            xbe = bytearray((disc / "default.xbe").read_bytes())
+            xbe[0x124:0x128] = (0x1).to_bytes(4, "little")
+            (disc / "default.xbe").write_bytes(xbe)
+            summary = tool.verify_tree(disc)
+            self.assertEqual(summary["data_files"], 4)
+            self.assertEqual(summary["pk3_files"], 2)
+
+    def test_dev128_rejects_xbe_with_64_mib_runtime_limit(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            disc = make_disc(Path(td))
+            identity_path = disc / "CONTENT-IDENTITY.json"
+            identity = json.loads(identity_path.read_text(encoding="utf-8"))
+            identity["content_profile"] = "dev128"
+            identity["derived_content"]["path"] = "data/zzzz-xbox-dev128.pk3"
+            identity["derived_content"]["profile"] = "dev128"
+            identity["derived_content"]["max_dimension"] = 512
+            identity["derived_content"]["external_lightmap_dimension"] = 128
+            (disc / "data/zzzz-xbox-lowmem.pk3").rename(
+                disc / "data/zzzz-xbox-dev128.pk3"
+            )
+            for row in identity["files"]:
+                if row["path"] == "data/zzzz-xbox-lowmem.pk3":
+                    row["path"] = "data/zzzz-xbox-dev128.pk3"
+            identity_path.write_text(json.dumps(identity, sort_keys=True, indent=2) + "\n")
+            content_hash = hashlib.sha256(identity_path.read_bytes()).hexdigest()
+            (disc / "BUILD-IDENTITY.txt").write_text(
+                "release=nexuiz-xbox-2.5.2\ncontent_profile=dev128\n"
+                "content_identity_sha256=" + content_hash + "\n",
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(tool.ReleaseTreeError, "64 MiB runtime limit"):
                 tool.verify_tree(disc)
 
 

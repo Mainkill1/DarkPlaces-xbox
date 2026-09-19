@@ -43,18 +43,20 @@ ENGINE_COMMON := \
 	netconn.c palette.c polygon.c portals.c protocol.c prvm_cmds.c prvm_edict.c \
 	prvm_exec.c r_explosion.c r_lerpanim.c r_lightning.c r_modules.c \
 	r_shadow.c r_sky.c r_sprites.c sbar.c sv_demo.c sv_main.c sv_move.c \
-	sv_phys.c sv_user.c svbsp.c svvm_cmds.c vid_shared.c view.c wad.c world.c zone.c
+	sv_phys.c sv_user.c svbsp.c svvm_cmds.c vid_shared.c view.c wad.c world.c
 
 ENGINE_SOUND := snd_main.c snd_mem.c snd_mix.c snd_ogg.c snd_wav.c snd_modplug.c
 PATCHED_FS := $(CLASSIC_PORT_DIR)/build/generated/fs_xbox.c
 PATCHED_GL_RMAIN := $(CLASSIC_PORT_DIR)/build/generated/gl_rmain_xbox.c
 PATCHED_GL_RSURF := $(CLASSIC_PORT_DIR)/build/generated/gl_rsurf_xbox.c
 PATCHED_MODEL_BRUSH := $(CLASSIC_PORT_DIR)/build/generated/model_brush_xbox.c
+PATCHED_ZONE := $(CLASSIC_PORT_DIR)/build/generated/zone_xbox.c
+PATCHED_PBGL_TEXTURE := $(CLASSIC_PORT_DIR)/build/generated/pbgl/texture_xbox.c
 MEMORY_HEADER_DIR := $(CLASSIC_PORT_DIR)/build/generated/memory
 PATCHED_QUAKEDEF := $(MEMORY_HEADER_DIR)/quakedef_xbox.h
 PATCHED_NETCONN := $(MEMORY_HEADER_DIR)/netconn_xbox.h
 ENGINE_SRCS := $(addprefix $(ENGINE_DIR)/,$(ENGINE_COMMON) $(ENGINE_SOUND) builddate.c cd_null.c) \
-	$(PATCHED_FS) $(PATCHED_GL_RMAIN) $(PATCHED_GL_RSURF) $(PATCHED_MODEL_BRUSH)
+	$(PATCHED_FS) $(PATCHED_GL_RMAIN) $(PATCHED_GL_RSURF) $(PATCHED_MODEL_BRUSH) $(PATCHED_ZONE)
 
 # Do not wildcard third-party codec directories. The release lock pins exact
 # source revisions and the Xbox executable carries only the library translation
@@ -128,7 +130,7 @@ $(MEMORY_PROFILE_OBJS): $(PATCHED_QUAKEDEF) $(PATCHED_NETCONN)
 LDFLAGS += -stack:1048576 -opt:ref
 
 include $(NXDK_DIR)/Makefile
-include $(PBGL_DIR)/config_pbgl.make
+include $(CLASSIC_PORT_DIR)/pbgl_xbox.make
 
 # pbGL is the NV2A fixed-function implementation used by the historical GL13
 # path. The engine never opens a desktop OpenGL context.
@@ -153,6 +155,14 @@ $(PATCHED_GL_RSURF): $(ENGINE_DIR)/gl_rsurf.c $(ROOT_DIR)/tools/xbox/patch_class
 $(PATCHED_MODEL_BRUSH): $(ENGINE_DIR)/model_brush.c $(ROOT_DIR)/tools/xbox/patch_classic_lightmaps.py
 	@mkdir -p "$(dir $@)"
 	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_lightmaps.py" "$<" "$@"
+
+$(PATCHED_ZONE): $(ENGINE_DIR)/zone.c $(ROOT_DIR)/tools/xbox/patch_classic_zone.py
+	@mkdir -p "$(dir $@)"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_classic_zone.py" "$<" "$@"
+
+$(PATCHED_PBGL_TEXTURE): $(PBGL_DIR)/src/texture.c $(ROOT_DIR)/tools/xbox/patch_pbgl_texture.py
+	@mkdir -p "$(dir $@)"
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/patch_pbgl_texture.py" "$<" "$@"
 
 $(PATCHED_QUAKEDEF): $(ENGINE_DIR)/quakedef.h $(ENGINE_DIR)/netconn.h $(ROOT_DIR)/tools/xbox/patch_classic_memory_headers.py
 	@mkdir -p "$(MEMORY_HEADER_DIR)"

@@ -41,13 +41,13 @@ def build_fixture(path: Path, corrupt_payload: bool = False) -> tuple[Path, dict
     # Root table: default.xbe -> CONTENT-IDENTITY.json -> data.
     root_sector = 34
     root = bytearray(b"\xff" * sector)
-    write_at(root, 0, entry("default.xbe", 36, 8, right=8))
-    write_at(root, 8 * 4, entry("CONTENT-IDENTITY.json", 37, 4, right=18))
+    write_at(root, 0, entry("default.xbe", 36, 4096, right=8))
+    write_at(root, 8 * 4, entry("CONTENT-IDENTITY.json", 38, 4, right=18))
     write_at(root, 18 * 4, entry("data", 35, sector, attrs=0x10))
 
     data = bytearray(b"\xff" * sector)
     pk3 = b"PK3!"
-    write_at(data, 0, entry("data20091001.pk3", 38, len(pk3)))
+    write_at(data, 0, entry("data20091001.pk3", 39, len(pk3)))
 
     descriptor = bytearray(sector)
     descriptor[0:20] = magic
@@ -56,9 +56,11 @@ def build_fixture(path: Path, corrupt_payload: bool = False) -> tuple[Path, dict
     write_at(image, 32 * sector, descriptor)
     write_at(image, root_sector * sector, root)
     write_at(image, 35 * sector, data)
-    write_at(image, 36 * sector, b"XBEHxxxx")
-    write_at(image, 37 * sector, b"{}\n\n")
-    write_at(image, 38 * sector, b"BAD!" if corrupt_payload else pk3)
+    xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+    xbe[0x124:0x128] = (0x1).to_bytes(4, "little")
+    write_at(image, 36 * sector, xbe)
+    write_at(image, 38 * sector, b"{}\n\n")
+    write_at(image, 39 * sector, b"BAD!" if corrupt_payload else pk3)
     path.write_bytes(image)
 
     expected = {
@@ -74,7 +76,7 @@ class XboxXisoVerifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             iso, expected = build_fixture(Path(td) / "test.iso")
             files = tool.read_xdvdfs(iso)
-            self.assertEqual(files["default.xbe"].size, 8)
+            self.assertEqual(files["default.xbe"].size, 4096)
             self.assertEqual(files["data/data20091001.pk3"].size, 4)
             for name, payload in expected.items():
                 self.assertEqual(tool.hash_extent(iso, files[name]), hashlib.sha256(payload).hexdigest())
@@ -86,11 +88,64 @@ class XboxXisoVerifyTests(unittest.TestCase):
             iso, _ = build_fixture(root / "test.iso", corrupt_payload=True)
             disc = root / "disc"
             (disc / "data").mkdir(parents=True)
-            (disc / "default.xbe").write_bytes(b"XBEHxxxx")
+            xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+            xbe[0x124:0x128] = (0x1).to_bytes(4, "little")
+            (disc / "default.xbe").write_bytes(xbe)
             (disc / "CONTENT-IDENTITY.json").write_bytes(b"{}\n\n")
             (disc / "data" / "data20091001.pk3").write_bytes(b"PK3!")
             with self.assertRaises(tool.XisoError):
                 tool.verify_image(iso, disc)
+
+    def test_verify_rejects_packaged_xbe_with_different_memory_flags(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            iso, _ = build_fixture(root / "test.iso")
+            disc = root / "disc"
+            (disc / "data").mkdir(parents=True)
+            xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+            xbe[0x124:0x128] = (0x5).to_bytes(4, "little")
+            (disc / "default.xbe").write_bytes(xbe)
+            (disc / "CONTENT-IDENTITY.json").write_bytes(b"{}\n\n")
+            (disc / "data" / "data20091001.pk3").write_bytes(b"PK3!")
+            with self.assertRaisesRegex(tool.XisoError, "memory flags"):
+                tool.verify_image(iso, disc)
+
+    def test_verify_rejects_other_packaged_xbe_mutation(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            iso, _ = build_fixture(root / "test.iso")
+            disc = root / "disc"
+            (disc / "data").mkdir(parents=True)
+            xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+            xbe[0x124:0x128] = (0x1).to_bytes(4, "little")
+            (disc / "default.xbe").write_bytes(xbe)
+            (disc / "CONTENT-IDENTITY.json").write_bytes(b"{}\n\n")
+            (disc / "data" / "data20091001.pk3").write_bytes(b"PK3!")
+            image = bytearray(iso.read_bytes())
+            image[36 * 2048 + 0x200] = 0x7F
+            iso.write_bytes(image)
+            with self.assertRaisesRegex(tool.XisoError, "default.xbe payload"):
+                tool.verify_image(iso, disc)
+
+    def test_verify_accepts_only_extract_xiso_media_patch(self):
+        tool = load_tool()
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            iso, _ = build_fixture(root / "test.iso")
+            disc = root / "disc"
+            (disc / "data").mkdir(parents=True)
+            xbe = bytearray(b"XBEH" + b"\x00" * 4092)
+            xbe[0x124:0x128] = (0x1).to_bytes(4, "little")
+            xbe[0x200:0x208] = b"\xe8\xca\xfd\xff\xff\x85\xc0\x7d"
+            (disc / "default.xbe").write_bytes(xbe)
+            (disc / "CONTENT-IDENTITY.json").write_bytes(b"{}\n\n")
+            (disc / "data" / "data20091001.pk3").write_bytes(b"PK3!")
+            image = bytearray(iso.read_bytes())
+            image[36 * 2048 + 0x200:36 * 2048 + 0x208] = b"\xe8\xca\xfd\xff\xff\x85\xc0\xeb"
+            iso.write_bytes(image)
+            self.assertEqual(tool.verify_image(iso, disc)["files"], 3)
 
 
 if __name__ == "__main__":

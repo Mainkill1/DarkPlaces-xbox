@@ -13,6 +13,7 @@
 #include "include/xbox_gl_bootstrap.h"
 #include "include/xbox_gl_state.h"
 #include "include/xbox_network.h"
+#include "include/xbox_memory_profile.h"
 
 int cl_available = true;
 qboolean vid_supportrefreshrate = false;
@@ -383,6 +384,7 @@ void VID_Finish(void)
 		if (r_speeds.integer == 2 || gl_finish.integer)
 			qglFinish();
 		pbgl_swap_buffers();
+		Xbox_MemoryTracePresentedFrame();
 		if (!first_swap_traced)
 		{
 			first_swap_traced = true;

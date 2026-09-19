@@ -76,6 +76,32 @@ After inputs exist, the complete build is offline:
 make -C xbox/release all
 ```
 
+`CONTENT_PROFILE=stock64` is the default final-acceptance content policy.
+For the current 128 MiB playable milestone, explicitly build with:
+
+```sh
+make -C xbox/release all CONTENT_PROFILE=dev128
+```
+
+Use an emulator configured for 128 MiB with that image. The staged startup
+configuration checks its content profile against the detected runtime profile
+before autoplay and records a fatal mismatch in the boot trace.
+The release wrapper also clears the pinned `cxbe` tool's default 64 MiB XBE
+runtime-limit bit for `dev128`; it leaves that bit set for `stock64`. The
+pre-XISO tree verifier checks the bit against the content identity, because
+emulator RAM settings alone do not make the extra memory visible to the game.
+Before evaluating gameplay, confirm `Xbox memory profile=dev128 ... total=128 MiB`
+in `E:/UDATA/Nexuiz/boot-trace.txt`. If it still reports `total=64 MiB`, the
+firmware/kernel is not exposing expanded memory to this XBE; the content
+profile guard stops before autoplay. Changing xemu's memory setting alone has
+not been sufficient in this workspace.
+
+After the first swap, the trace records `Xbox presented frame=...` with
+`world_loaded`, `available_pages`, `low_water_pages`, and whether sampled
+physical headroom is at least 20 MiB. It repeats every 60 presented frames.
+These are sampled free pages, not a complete allocation ledger or proof that
+the entire offline/LAN route is stable.
+
 Or run gates independently:
 
 ```sh
@@ -104,14 +130,14 @@ Before image creation, `tools/xbox/verify_release_tree.py` reconciles:
 - no symlink/case-collision surprises;
 - at least one actual Nexuiz PK3.
 
-After image creation, `tools/xbox/verify_xiso.py` parses the XDVDFS directory tree directly and requires the image file list, sizes and packaged payload hashes to match the staging tree. `default.xbe` is checked by size/magic rather than byte-for-byte because `extract-xiso` may apply its standard media-enable patch during image creation.
+After image creation, `tools/xbox/verify_xiso.py` parses the XDVDFS directory tree directly and requires the image file list, sizes and packaged payload bytes to match the staging tree. For `default.xbe`, the verifier permits only the pinned `extract-xiso` media-enable byte substitution and compares every other byte.
 
 ## Intended outputs
 
 A successful package gate must leave:
 
 ```text
-xbox/release/out/
+xbox/release/out/<stock64-or-dev128>/
   nexuiz-xbox.xbe
   nexuiz-xbox.iso
   BUILD-IDENTITY.txt
@@ -121,13 +147,14 @@ xbox/release/out/
 
 The XISO is staged from the **complete Nexuiz 2.5.2 `data/` tree**, not a benchmark-only subset. The stager adds `xbox-defaults.cfg` and appends `exec xbox-defaults.cfg` to an existing `autoexec.cfg` instead of replacing the game's original startup configuration.
 
-Staging also generates `data/zzzz-xbox-lowmem.pk3` from the verified original
-PK3s. Effective TGA assets larger than 256 pixels on either axis are reduced by
-deterministic repeated box filtering. Generated images are uncompressed TGA
-entries in a stored PK3, bounding the runtime source image to at most 256 KiB and
-avoiding a DEFLATE workspace for those overrides. The original PK3 bytes are
-unchanged. `CONTENT-IDENTITY.json` records the generated pack policy, asset
-count, byte size, and SHA-256; the normal tree and XISO verifiers cover it.
+Staging generates one profile-specific override pack from the verified original
+PK3s. `stock64` uses `data/zzzz-xbox-lowmem.pk3` with 256 px general textures
+and 64 px external lightmaps. `dev128` uses `data/zzzz-xbox-dev128.pk3` with
+512 px general textures and 128 px external lightmaps. Both use deterministic
+repeated box filtering and stored, uncompressed TGA entries, avoiding a runtime
+DEFLATE workspace for the overrides. The original PK3 bytes are unchanged.
+`CONTENT-IDENTITY.json` records the chosen profile, pack policy, asset count,
+size, and SHA-256; the tree and XISO verifiers require exactly that pack.
 See [Low-Memory Material Downscaling](../../wiki/Low-Memory-Material-Downscaling.md).
 
 External Q3 lightmaps named `maps/<map>/lm_NNNN.tga` have a stricter 64x64
@@ -163,12 +190,13 @@ The Xbox defaults preserve:
 - uncapped benchmark-friendly presentation settings;
 - zero-action demo startup and controller takeover/restart behavior.
 
-They also invoke `xbox_apply_memory_profile` after normal saved configuration
-has loaded and before autoplay begins. The XBE selects `retail64` below 112 MiB
-of detected physical memory and `dev128` at or above 112 MiB. The staged
-low-memory content is deliberately shared by both profiles so one canonical
-XISO remains the test target. `dev128` is diagnostic and does not count as
-stock-memory acceptance.
+They invoke `xbox_apply_memory_profile` and then
+`xbox_expect_content_profile` after normal saved configuration has loaded and
+before autoplay begins. The XBE selects `retail64` below 112 MiB of detected
+physical memory and `dev128` at or above 112 MiB. A mismatched disc stops with
+a durable trace instead of silently testing the wrong content. The two images
+are published separately under `out/<profile>/`. `dev128` is the current
+playable-development milestone; it does not count as stock-memory acceptance.
 
 For controlled testing, create
 `E:\UDATA\Nexuiz\memory-profile.txt` containing exactly `retail64`, `dev128`,

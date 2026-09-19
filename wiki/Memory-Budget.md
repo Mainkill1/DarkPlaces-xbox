@@ -2,6 +2,34 @@
 
 The original Xbox has 64 MB of unified memory shared by CPU, GPU resources, executable code, engine state, content, audio, and transient work. A port that only runs on a 128 MB upgraded console has not met the baseline.
 
+Current gate (issue #40 owner follow-up): establish a playable 128 MiB profile
+with at least 20 MiB genuinely available physical headroom, then return to
+stock 64 MiB acceptance. The two content profiles are now built separately:
+`stock64` has a 256/64 px general/lightmap override, while `dev128` has a
+512/128 px override. The disc records its profile and startup stops before
+autoplay if it does not match the selected runtime profile. This is source and
+build hardening only; neither playable gate nor headroom is yet proven.
+
+The last stock trace stopped while loading `reactor.md3`, with 15 physical
+pages left before an engine texture-copy allocation. The Xbox-only classic
+allocator now uses the same trailer size for allocation, poisoning, and
+accounting and reports the failed request size and pool. The pinned pbGL
+texture table now rebinds live texture-unit pointers after growth and counts
+only live IDs on deletion. Both repairs cross-build, but their runtime effect
+still requires an instrumented boot.
+
+The first profile-specific `dev128` image booted under xemu configured for
+128 MiB but reported only 64 MiB to the game. The pinned `cxbe` XBE generator
+sets its "limit development-kit runtime memory to 64 MiB" header bit
+unconditionally. The canonical release now sets that bit according to the
+content profile and verifies it before XISO creation. A new boot must prove
+that `MmQueryStatistics` now reports 128 MiB. In this workspace, a subsequent
+xemu launch with `-m 128` and the XBE bit cleared still reported `total=64 MiB`
+from the guest, so that firmware/kernel path remains unresolved. The earlier
+boots prove only the profile-mismatch safety gate, not expanded memory use.
+Presented-frame telemetry now records sampled available and low-water page
+counts plus a 20 MiB headroom indicator every 60 frames once rendering starts.
+
 ## Option B budget revision required
 
 The table below predates playable offline/LAN acceptance and is **not a validated allocation envelope**. Issue #13 must account for the local client plus listen server, game VMs, bots/entities, collision, network queues and SDK threads/stacks concurrently with rendering and audio. Measure actual memory available after runtime/platform initialization; do not treat the whole physical 64 MiB as free application memory.

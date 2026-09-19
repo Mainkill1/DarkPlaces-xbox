@@ -52,11 +52,13 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             self.assertIn("developer_texturelogging 1", defaults)
             self.assertIn("gl_mesh_testmanualfeeding 1", defaults)
             self.assertIn("gl_paranoid 1", defaults)
+            self.assertIn("xbox_expect_content_profile stock64", defaults)
             saved = json.loads((disc / "CONTENT-IDENTITY.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["source_sha256"], digest)
             self.assertEqual(saved["data_prefix"], "Nexuiz/data/")
             self.assertEqual(saved["staged_file_count"], identity["staged_file_count"])
-            self.assertEqual(saved["schema_version"], 2)
+            self.assertEqual(saved["schema_version"], 3)
+            self.assertEqual(saved["content_profile"], "stock64")
             derived = saved["derived_content"]
             self.assertEqual(derived["path"], "data/zzzz-xbox-lowmem.pk3")
             self.assertEqual(derived["asset_count"], 0)
@@ -96,6 +98,8 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             autoplay = defaults.index("xbox_demo_start")
             self.assertLess(auto_quality, profile)
             self.assertLess(profile, autoplay)
+            self.assertLess(profile, defaults.index("xbox_expect_content_profile stock64"))
+            self.assertLess(defaults.index("xbox_expect_content_profile stock64"), autoplay)
 
     def test_stage_rejects_archive_sha_mismatch(self):
         with tempfile.TemporaryDirectory() as td:
@@ -186,6 +190,38 @@ class ClassicReleaseStagingTests(unittest.TestCase):
                 self.assertEqual(int.from_bytes(converted[12:14], "little"), 256)
                 self.assertEqual(zf.getinfo("textures/huge.tga").compress_type, zipfile.ZIP_STORED)
             self.assertEqual(identity["derived_content"]["asset_count"], 1)
+
+    def test_dev128_stages_higher_quality_override_without_retail_override(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            header = bytearray(18)
+            header[2] = 2
+            header[12:14] = (1024).to_bytes(2, "little")
+            header[14:16] = (1).to_bytes(2, "little")
+            header[16] = 24
+            header[17] = 0x20
+            source = bytes(header) + bytes((0, 0, 255)) * 1024
+            archive, digest = self.make_archive(root, {
+                "Nexuiz/data/data.pk3": self.make_pk3({"textures/huge.tga": source}),
+            })
+            disc = root / "disc"
+            identity = stage_classic_release.stage_release(
+                archive, disc, digest, content_profile="dev128"
+            )
+            self.assertFalse((disc / "data" / "zzzz-xbox-lowmem.pk3").exists())
+            self.assertEqual(identity["content_profile"], "dev128")
+            self.assertEqual(identity["derived_content"]["path"], "data/zzzz-xbox-dev128.pk3")
+            self.assertEqual(identity["derived_content"]["max_dimension"], 512)
+            self.assertEqual(identity["derived_content"]["external_lightmap_dimension"], 128)
+            with zipfile.ZipFile(disc / "data" / "zzzz-xbox-dev128.pk3") as zf:
+                converted = zf.read("textures/huge.tga")
+                self.assertEqual(int.from_bytes(converted[12:14], "little"), 512)
+            self.assertIn(
+                "xbox_expect_content_profile dev128",
+                (disc / "data" / "xbox-defaults.cfg").read_text(encoding="utf-8"),
+            )
+            with zipfile.ZipFile(disc / "data" / "data.pk3") as zf:
+                self.assertEqual(zf.read("textures/huge.tga"), source)
 
 
 if __name__ == "__main__":

@@ -14,5 +14,6 @@ void Xbox_MemoryTraceLoadFailure(const char *path, int64_t expected,
 	int64_t actual);
 void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
 	int level, int width, int height);
+void Xbox_MemoryTracePresentedFrame(void);
 
 #endif

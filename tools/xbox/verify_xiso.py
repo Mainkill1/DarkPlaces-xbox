@@ -229,11 +229,24 @@ def verify_image(iso: Path, disc: Path) -> dict[str, int]:
             raise XisoError(f"size mismatch in XISO: {relative}")
         total += entry.size
         if relative.casefold() == "default.xbe":
-            # extract-xiso may apply its standard media-enable byte patch while
-            # creating the image. Validate executable identity/size but do not
-            # require the packed XBE bytes to equal the staging copy byte-for-byte.
-            if _read_extent_prefix(iso, entry, 4) != b"XBEH":
+            # The pinned extract-xiso substitutes only the last byte of this
+            # media-check instruction (7d -> eb) while copying .xbe files.
+            # Normalize the staged XBE by that exact transformation, then
+            # require every packaged byte to match.
+            with iso.open("rb") as image_stream:
+                image_stream.seek(entry.offset)
+                packaged_xbe = image_stream.read(entry.size)
+            staged_xbe = staged.read_bytes()
+            if packaged_xbe[:4] != b"XBEH" or len(packaged_xbe) < 0x128:
                 raise XisoError("default.xbe inside XISO has invalid magic")
+            if packaged_xbe[0x124:0x128] != staged_xbe[0x124:0x128]:
+                raise XisoError("default.xbe memory flags differ inside XISO")
+            normalized_xbe = staged_xbe.replace(
+                b"\xe8\xca\xfd\xff\xff\x85\xc0\x7d",
+                b"\xe8\xca\xfd\xff\xff\x85\xc0\xeb",
+            )
+            if packaged_xbe != normalized_xbe:
+                raise XisoError("default.xbe payload differs inside XISO")
             continue
         if hash_extent(iso, entry) != _hash_file(staged):
             raise XisoError(f"payload hash mismatch in XISO: {relative}")

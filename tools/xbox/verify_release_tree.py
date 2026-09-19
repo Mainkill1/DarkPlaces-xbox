@@ -16,6 +16,10 @@ HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 CHUNK = 1024 * 1024
 STOCK_MAX_DIMENSION = 256
 EXTERNAL_LIGHTMAP_DIMENSION = 64
+PROFILE_PACKS = {
+    "stock64": ("data/zzzz-xbox-lowmem.pk3", 256, 64),
+    "dev128": ("data/zzzz-xbox-dev128.pk3", 512, 128),
+}
 
 
 class ReleaseTreeError(ValueError):
@@ -69,18 +73,24 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ReleaseTreeError(f"cannot read content identity: {exc}") from exc
     expected = {
-        "schema_version", "release", "source_file", "source_sha256", "data_prefix",
+        "schema_version", "release", "content_profile", "source_file", "source_sha256", "data_prefix",
         "source_file_count", "staged_file_count", "staged_bytes", "derived_content", "files",
     }
     if not isinstance(identity, dict) or set(identity) != expected:
         raise ReleaseTreeError("CONTENT-IDENTITY.json has an unexpected schema")
-    if identity["schema_version"] != 2 or identity["release"] != RELEASE:
+    if identity["schema_version"] != 3 or identity["release"] != RELEASE:
         raise ReleaseTreeError("CONTENT-IDENTITY.json has the wrong release identity")
+    if (
+        not isinstance(identity["content_profile"], str)
+        or identity["content_profile"] not in PROFILE_PACKS
+    ):
+        raise ReleaseTreeError("CONTENT-IDENTITY.json has an invalid content profile")
     if not isinstance(identity["source_sha256"], str) or not HEX64.fullmatch(identity["source_sha256"]):
         raise ReleaseTreeError("CONTENT-IDENTITY.json source SHA-256 is malformed")
     if not isinstance(identity["files"], list) or not identity["files"]:
         raise ReleaseTreeError("CONTENT-IDENTITY.json contains no staged files")
     derived = identity["derived_content"]
+    expected_path, expected_dimension, expected_lightmap = PROFILE_PACKS[identity["content_profile"]]
     derived_keys = {
         "path", "profile", "max_dimension", "external_lightmap_dimension",
         "filter", "entry_storage",
@@ -89,10 +99,10 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
     if not isinstance(derived, dict) or set(derived) != derived_keys:
         raise ReleaseTreeError("derived content identity has an unexpected schema")
     if (
-        derived["path"] != "data/zzzz-xbox-lowmem.pk3"
-        or derived["profile"] != "stock64"
-        or derived["max_dimension"] != STOCK_MAX_DIMENSION
-        or derived["external_lightmap_dimension"] != EXTERNAL_LIGHTMAP_DIMENSION
+        derived["path"] != expected_path
+        or derived["profile"] != identity["content_profile"]
+        or derived["max_dimension"] != expected_dimension
+        or derived["external_lightmap_dimension"] != expected_lightmap
         or derived["filter"] != "repeated-2x2-box-premultiplied-alpha"
         or derived["entry_storage"] != "stored"
         or type(derived["asset_count"]) is not int
@@ -106,7 +116,7 @@ def _load_content_identity(path: Path) -> dict[str, Any]:
     return identity
 
 
-def _verify_build_identity(path: Path, content_identity: Path) -> None:
+def _verify_build_identity(path: Path, content_identity: Path, content_profile: str) -> None:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeError) as exc:
@@ -121,6 +131,8 @@ def _verify_build_identity(path: Path, content_identity: Path) -> None:
         fields[key] = value
     if fields.get("release") != RELEASE:
         raise ReleaseTreeError("BUILD-IDENTITY release does not match")
+    if fields.get("content_profile") != content_profile:
+        raise ReleaseTreeError("BUILD-IDENTITY content profile does not match")
     expected_hash = _sha256(content_identity)
     if fields.get("content_identity_sha256") != expected_hash:
         raise ReleaseTreeError("BUILD-IDENTITY does not match CONTENT-IDENTITY.json")
@@ -151,6 +163,18 @@ def verify_tree(disc: Path) -> dict[str, int]:
 
     content_path = files["CONTENT-IDENTITY.json"]
     identity = _load_content_identity(content_path)
+    try:
+        with xbe.open("rb") as stream:
+            stream.seek(0x124)
+            init_flags = int.from_bytes(stream.read(4), "little")
+    except OSError as exc:
+        raise ReleaseTreeError(f"cannot read XBE initialization flags: {exc}") from exc
+    expected_flags = 0x5 if identity["content_profile"] == "stock64" else 0x1
+    if init_flags != expected_flags:
+        raise ReleaseTreeError(
+            "XBE 64 MiB runtime limit does not match content profile: "
+            f"flags=0x{init_flags:08x} profile={identity['content_profile']}"
+        )
     declared: dict[str, tuple[int, str]] = {}
     declared_bytes = 0
     for row in identity["files"]:
@@ -195,11 +219,17 @@ def verify_tree(disc: Path) -> dict[str, int]:
     derived_record = declared.get(derived["path"])
     if derived_record != (derived["bytes"], derived["sha256"]):
         raise ReleaseTreeError("derived content does not match its staged file record")
+    other_pack = (
+        PROFILE_PACKS["dev128"][0] if identity["content_profile"] == "stock64"
+        else PROFILE_PACKS["stock64"][0]
+    )
+    if other_pack in declared:
+        raise ReleaseTreeError("staged content contains the wrong profile's derived pack")
     pk3_files = sum(1 for name in declared if name.lower().endswith(".pk3"))
     if pk3_files < 1:
         raise ReleaseTreeError("release tree contains no Nexuiz PK3 files")
 
-    _verify_build_identity(files["BUILD-IDENTITY.txt"], content_path)
+    _verify_build_identity(files["BUILD-IDENTITY.txt"], content_path, identity["content_profile"])
     return {"data_files": len(declared), "pk3_files": pk3_files, "data_bytes": declared_bytes}
 
 

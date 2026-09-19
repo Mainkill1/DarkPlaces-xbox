@@ -60,12 +60,16 @@ gl_mesh_testmanualfeeding 1
 // Persist pbGL-reported errors in boot-trace.txt during renderer bring-up.
 gl_paranoid 1
 xbox_apply_memory_profile
+xbox_expect_content_profile {content_profile}
 alias xbox_demo_start "startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake"
 xbox_demo_start
 """
 AUTOEXEC_LINE = "exec xbox-defaults.cfg"
 LOWMEM_PACK_NAME = "zzzz-xbox-lowmem.pk3"
 LOWMEM_MAX_DIMENSION = build_lowmem_texture_pack.STOCK_MAX_DIMENSION
+DEV128_PACK_NAME = "zzzz-xbox-dev128.pk3"
+DEV128_MAX_DIMENSION = 512
+DEV128_LIGHTMAP_DIMENSION = 128
 
 
 class StageError(ValueError):
@@ -148,8 +152,10 @@ def _sha256(path: Path) -> str:
     return result.hexdigest()
 
 
-def _write_xbox_defaults(data_dir: Path) -> None:
-    (data_dir / "xbox-defaults.cfg").write_text(XBOX_DEFAULTS, encoding="utf-8", newline="\n")
+def _write_xbox_defaults(data_dir: Path, content_profile: str) -> None:
+    (data_dir / "xbox-defaults.cfg").write_text(
+        XBOX_DEFAULTS.format(content_profile=content_profile), encoding="utf-8", newline="\n"
+    )
     autoexec = data_dir / "autoexec.cfg"
     existing = autoexec.read_text(encoding="utf-8", errors="strict") if autoexec.exists() else ""
     lines = [line.strip().casefold() for line in existing.splitlines()]
@@ -160,7 +166,11 @@ def _write_xbox_defaults(data_dir: Path) -> None:
         autoexec.write_text(existing, encoding="utf-8", newline="\n")
 
 
-def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
+def stage_release(
+    archive: Path, disc: Path, expected_sha256: str, content_profile: str = "stock64"
+) -> dict:
+    if content_profile not in ("stock64", "dev128"):
+        raise StageError(f"unsupported content profile: {content_profile}")
     archive = archive.resolve()
     disc = disc.resolve()
     try:
@@ -203,21 +213,44 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
         raise StageError("Nexuiz data directory did not stage any PK3 files")
 
     try:
-        _write_xbox_defaults(data_dir)
+        _write_xbox_defaults(data_dir, content_profile)
     except (OSError, UnicodeError) as exc:
         raise StageError(f"cannot write Xbox defaults: {exc}") from exc
 
-    lowmem_pack = data_dir / LOWMEM_PACK_NAME
+    pack_name = LOWMEM_PACK_NAME if content_profile == "stock64" else DEV128_PACK_NAME
+    max_dimension = LOWMEM_MAX_DIMENSION if content_profile == "stock64" else DEV128_MAX_DIMENSION
+    lightmap_dimension = (
+        build_lowmem_texture_pack.EXTERNAL_LIGHTMAP_DIMENSION
+        if content_profile == "stock64" else DEV128_LIGHTMAP_DIMENSION
+    )
+    derived_pack = data_dir / pack_name
     source_packs = sorted(
-        (path for path in data_dir.glob("*.pk3") if path.name != LOWMEM_PACK_NAME),
+        (
+            path for path in data_dir.glob("*.pk3")
+            if path.name not in (LOWMEM_PACK_NAME, DEV128_PACK_NAME)
+        ),
         key=lambda path: path.name.casefold(),
     )
+    if (data_dir / LOWMEM_PACK_NAME).exists() or (data_dir / DEV128_PACK_NAME).exists():
+        raise StageError("source archive contains a reserved Xbox content pack name")
     try:
-        lowmem_manifest = build_lowmem_texture_pack.build_pack(
-            source_packs, lowmem_pack, LOWMEM_MAX_DIMENSION
+        pack_manifest = build_lowmem_texture_pack.build_pack(
+            source_packs, derived_pack, max_dimension, lightmap_dimension,
+            profile=content_profile,
         )
     except build_lowmem_texture_pack.TexturePackError as exc:
-        raise StageError(f"cannot generate low-memory texture pack: {exc}") from exc
+        raise StageError(f"cannot generate {content_profile} texture pack: {exc}") from exc
+    derived_content = {
+        "path": f"data/{pack_name}",
+        "profile": pack_manifest["profile"],
+        "max_dimension": pack_manifest["max_dimension"],
+        "external_lightmap_dimension": pack_manifest["external_lightmap_dimension"],
+        "filter": pack_manifest["filter"],
+        "entry_storage": pack_manifest["entry_storage"],
+        "asset_count": pack_manifest["asset_count"],
+        "bytes": derived_pack.stat().st_size,
+        "sha256": _sha256(derived_pack),
+    }
 
     files = []
     total = 0
@@ -228,25 +261,16 @@ def stage_release(archive: Path, disc: Path, expected_sha256: str) -> dict:
         files.append({"path": relative, "bytes": size, "sha256": _sha256(path)})
 
     identity = {
-        "schema_version": 2,
+        "schema_version": 3,
         "release": "nexuiz-xbox-2.5.2",
+        "content_profile": content_profile,
         "source_file": archive.name,
         "source_sha256": release_inputs.file_sha256(archive),
         "data_prefix": prefix,
         "source_file_count": staged_source,
         "staged_file_count": len(files),
         "staged_bytes": total,
-        "derived_content": {
-            "path": f"data/{LOWMEM_PACK_NAME}",
-            "profile": lowmem_manifest["profile"],
-            "max_dimension": lowmem_manifest["max_dimension"],
-            "external_lightmap_dimension": lowmem_manifest["external_lightmap_dimension"],
-            "filter": lowmem_manifest["filter"],
-            "entry_storage": lowmem_manifest["entry_storage"],
-            "asset_count": lowmem_manifest["asset_count"],
-            "bytes": lowmem_pack.stat().st_size,
-            "sha256": _sha256(lowmem_pack),
-        },
+        "derived_content": derived_content,
         "files": files,
     }
     identity_path.write_text(
@@ -259,6 +283,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--disc", type=Path, required=True)
+    parser.add_argument("--content-profile", choices=("stock64", "dev128"), default="stock64")
     parser.add_argument(
         "--lock",
         type=Path,
@@ -267,7 +292,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         lock = release_inputs.load_lock(args.lock)
-        identity = stage_release(args.archive, args.disc, lock["content"]["sha256"])
+        identity = stage_release(
+            args.archive, args.disc, lock["content"]["sha256"], args.content_profile
+        )
     except (release_inputs.ReleaseInputError, StageError) as exc:
         print(f"release staging error: {exc}", file=sys.stderr)
         return 2

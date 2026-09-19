@@ -144,6 +144,31 @@ void Xbox_MemoryTraceTextureUpload(const char *operation, const char *phase,
 			operation, phase, level, width, height);
 }
 
+void Xbox_MemoryTracePresentedFrame(void)
+{
+	static unsigned int frames;
+	static uint64_t low_water_pages = UINT64_MAX;
+	uint64_t total_bytes, available_bytes, available_pages;
+	++frames;
+	if (frames != 1 && frames % 60 != 0)
+		return;
+	if (!Xbox_MemorySnapshot(&total_bytes, &available_bytes))
+	{
+		Xbox_BootTraceMark("Xbox presented frame=%u available=unavailable", frames);
+		return;
+	}
+	available_pages = available_bytes / PAGE_SIZE;
+	if (available_pages < low_water_pages)
+		low_water_pages = available_pages;
+	Xbox_BootTraceMark(
+		"Xbox presented frame=%u world_loaded=%d available_pages=%llu "
+		"low_water_pages=%llu headroom_20mib=%d",
+		frames, cl.worldmodel != NULL,
+		(unsigned long long)available_pages,
+		(unsigned long long)low_water_pages,
+		available_bytes >= 20 * XBOX_MIB);
+}
+
 static int Xbox_MemoryReadRuntimeValues(xbox_memory_runtime_values_t *values,
 	cvar_t **variables)
 {
@@ -251,8 +276,36 @@ static void Xbox_ApplyMemoryProfile_f(void)
 				? " diagnostic-only" : "");
 }
 
+static void Xbox_ExpectContentProfile_f(void)
+{
+	const xbox_memory_policy_t *policy = Xbox_MemoryProfilePolicy();
+	const char *expected;
+	const char *actual;
+	if (Cmd_Argc() != 2)
+		Sys_Error("Xbox content profile command requires stock64 or dev128");
+	expected = Cmd_Argv(1);
+	if (strcmp(expected, "stock64") && strcmp(expected, "dev128"))
+		Sys_Error("Xbox content profile is invalid: %s", expected);
+	actual = policy->profile == XBOX_MEMORY_PROFILE_DEV128 ? "dev128" : "stock64";
+	if (strcmp(expected, actual))
+	{
+		Xbox_BootTraceMark(
+			"Xbox content profile mismatch disc=%s runtime=%s detected=%llu MiB",
+			expected, policy->name,
+			(unsigned long long)(policy->total_bytes / XBOX_MIB));
+		Sys_Error(
+			"Xbox content profile mismatch: disc=%s runtime=%s detected=%llu MiB; use stock64 image if the Xbox kernel exposes only 64 MiB",
+			expected, policy->name,
+			(unsigned long long)(policy->total_bytes / XBOX_MIB));
+	}
+	Xbox_BootTraceMark("Xbox content profile matched disc=%s runtime=%s",
+		expected, policy->name);
+}
+
 void Xbox_MemoryProfileRegisterCommands(void)
 {
 	Cmd_AddCommand("xbox_apply_memory_profile", Xbox_ApplyMemoryProfile_f,
 		"apply detected Xbox memory-profile resource ceilings");
+	Cmd_AddCommand("xbox_expect_content_profile", Xbox_ExpectContentProfile_f,
+		"stop before autoplay if staged content does not match detected memory");
 }

@@ -19,7 +19,7 @@ class XboxReleaseMakefileTests(unittest.TestCase):
         self.assertIn("bootstrap", proc.stdout)
         self.assertIn("preflight", proc.stdout)
         self.assertIn("stage", proc.stdout)
-        self.assertIn("deterministic stock-64 texture override", proc.stdout)
+        self.assertIn("CONTENT_PROFILE=stock64|dev128", proc.stdout)
         self.assertIn("engine", proc.stdout)
         self.assertIn("package", proc.stdout)
 
@@ -32,6 +32,8 @@ class XboxReleaseMakefileTests(unittest.TestCase):
         self.assertIn("stage: preflight", text)
         self.assertIn("engine: preflight", text)
         self.assertIn("package:", text)
+        self.assertIn("OUT_DIR := $(CURDIR)/out/$(CONTENT_PROFILE)", text)
+        self.assertIn('echo "content_profile=$(CONTENT_PROFILE)"', text)
 
     def test_generated_release_outputs_are_named_explicitly(self):
         text = (RELEASE / "Makefile").read_text(encoding="utf-8")
@@ -53,6 +55,7 @@ class XboxReleaseMakefileTests(unittest.TestCase):
         self.assertIn('$(EXTRACT_XISO) -c "$(DISC_DIR)" "$(XISO)"', text)
         self.assertIn("verify_release_tree.py", text)
         self.assertIn("verify_xiso.py", text)
+        self.assertIn("set_xbe_memory_profile.py", text)
         self.assertNotIn('$(MAKE) -C "$(CLASSIC_DIR)" V=1 all', text)
 
 

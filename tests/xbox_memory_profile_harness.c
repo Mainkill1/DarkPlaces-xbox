@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <setjmp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,12 @@ static unsigned int query_fail_on_call;
 static char trace_text[8192];
 static size_t trace_used;
 static void (*registered_command)(void);
+static void (*registered_content_command)(void);
+static const char *content_argument;
+static jmp_buf fatal_jump;
+static int fatal_expected;
+static char fatal_text[256];
+client_state_t cl;
 
 static cvar_t cvars[] = {
 	{0, "gl_max_size", "2048", "", 2048, 2048.0f},
@@ -75,9 +82,29 @@ void Cvar_SetValueQuick(cvar_t *var, float value)
 
 void Cmd_AddCommand(const char *name, void (*function)(void), const char *description)
 {
-	assert(!strcmp(name, "xbox_apply_memory_profile"));
 	assert(description && description[0]);
-	registered_command = function;
+	if (!strcmp(name, "xbox_apply_memory_profile"))
+		registered_command = function;
+	else if (!strcmp(name, "xbox_expect_content_profile"))
+		registered_content_command = function;
+	else
+		assert(0);
+}
+
+int Cmd_Argc(void) { return 2; }
+const char *Cmd_Argv(int index)
+{
+	assert(index == 1);
+	return content_argument;
+}
+void Sys_Error(const char *error, ...)
+{
+	va_list args;
+	assert(fatal_expected);
+	va_start(args, error);
+	vsnprintf(fatal_text, sizeof(fatal_text), error, args);
+	va_end(args);
+	longjmp(fatal_jump, 1);
 }
 
 static void reset(uint64_t total_mib, uint64_t available_mib)
@@ -90,6 +117,9 @@ static void reset(uint64_t total_mib, uint64_t available_mib)
 	trace_used = 0;
 	trace_text[0] = 0;
 	registered_command = NULL;
+	registered_content_command = NULL;
+	fatal_expected = 0;
+	fatal_text[0] = 0;
 	cvars[0].integer = 2048;
 	cvars[1].integer = 0;
 	cvars[2].integer = 0;
@@ -130,6 +160,10 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "total=64 MiB available=18 MiB"));
 	Xbox_MemoryProfileRegisterCommands();
 	assert(registered_command);
+	assert(registered_content_command);
+	content_argument = "stock64";
+	registered_content_command();
+	assert(strstr(trace_text, "content profile matched disc=stock64"));
 	registered_command();
 	assert(cvars[0].integer == 1024);
 	assert(cvars[1].integer == 2);
@@ -154,6 +188,9 @@ int main(int argc, char **argv)
 	assert(Xbox_MemoryProfileAllowsEnhancedMaterialLayers());
 	assert(!Xbox_MemoryProfileUsesReducedColorTextures());
 	Xbox_MemoryProfileRegisterCommands();
+	content_argument = "dev128";
+	registered_content_command();
+	assert(strstr(trace_text, "content profile matched disc=dev128"));
 	registered_command();
 	assert(cvars[0].integer == 2048);
 	assert(cvars[1].integer == 0);
@@ -166,8 +203,34 @@ int main(int argc, char **argv)
 	assert(strstr(trace_text, "retail64_ceiling_violations=6"));
 	assert(strstr(trace_text, "enhanced_material_layers=1"));
 	assert(strstr(trace_text, "reduced_color_textures=0"));
+	cl.worldmodel = (void *)1;
+	Xbox_MemoryTracePresentedFrame();
+	assert(strstr(trace_text, "presented frame=1 world_loaded=1"));
+	assert(strstr(trace_text, "headroom_20mib=1"));
+	content_argument = "stock64";
+	fatal_expected = 1;
+	if (setjmp(fatal_jump) == 0)
+	{
+		registered_content_command();
+		assert(0);
+	}
+	assert(strstr(fatal_text, "content profile mismatch"));
+	assert(strstr(trace_text, "content profile mismatch disc=stock64 runtime=dev128"));
+	assert(strstr(fatal_text, "detected=128 MiB"));
 
 	remove(path);
+	reset(64, 18);
+	assert(Xbox_MemoryProfileInitialize(path));
+	Xbox_MemoryProfileRegisterCommands();
+	content_argument = "dev128";
+	fatal_expected = 1;
+	if (setjmp(fatal_jump) == 0)
+	{
+		registered_content_command();
+		assert(0);
+	}
+	assert(strstr(fatal_text, "detected=64 MiB"));
+	assert(strstr(fatal_text, "use stock64 image"));
 	reset(64, 18);
 	assert(Xbox_MemoryProfileInitialize(path));
 	Xbox_MemoryProfileRegisterCommands();

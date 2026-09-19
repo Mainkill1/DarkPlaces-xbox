@@ -10,7 +10,11 @@
 ROOT_DIR := $(abspath $(CURDIR)/../..)
 CLASSIC_DIR := $(ROOT_DIR)/xbox/classic
 DEPS_DIR := $(ROOT_DIR)/deps
-OUT_DIR := $(CURDIR)/out
+CONTENT_PROFILE ?= stock64
+ifneq ($(filter $(CONTENT_PROFILE),stock64 dev128),$(CONTENT_PROFILE))
+$(error CONTENT_PROFILE must be stock64 or dev128)
+endif
+OUT_DIR := $(CURDIR)/out/$(CONTENT_PROFILE)
 LOCK := $(CURDIR)/release-inputs.json
 PYTHON ?= python3
 CURL ?= curl
@@ -27,7 +31,7 @@ HOST_TOOLS_DIR := $(CURDIR)/toolchain
 NEXUIZ_ARCHIVE ?= $(DEPS_DIR)/nexuiz-252.zip
 DISC_DIR := $(CLASSIC_DIR)/build/disc
 XBE := $(DISC_DIR)/default.xbe
-XISO := $(CLASSIC_DIR)/nexuiz-xbox.iso
+XISO := $(CLASSIC_DIR)/nexuiz-xbox-$(CONTENT_PROFILE).iso
 BUILD_IDENTITY := $(DISC_DIR)/BUILD-IDENTITY.txt
 CONTENT_IDENTITY := $(DISC_DIR)/CONTENT-IDENTITY.json
 EXTRACT_XISO := $(NXDK_DIR)/tools/extract-xiso/build/extract-xiso
@@ -54,7 +58,7 @@ help:
 	  '' \
 	  'Offline phases:' \
 	  '  make -C xbox/release preflight     verify every dependency checkout and archive identity' \
-	  '  make -C xbox/release stage         stage complete data + deterministic stock-64 texture override' \
+	  '  make -C xbox/release stage         stage complete data for CONTENT_PROFILE=stock64|dev128' \
 	  '  make -C xbox/release engine        compile/link main.exe only' \
 	  '  make -C xbox/release xbe           generate default.xbe from the linked engine' \
 	  '  make -C xbox/release verify-tree   reconcile staged data, identities and XBE before packaging' \
@@ -63,7 +67,8 @@ help:
 	  '  make -C xbox/release package       publish XBE/XISO + identities + SHA256SUMS' \
 	  '  make -C xbox/release all           complete offline release-candidate pipeline' \
 	  '' \
-	  'Supply NEXUIZ_ARCHIVE=/path/nexuiz-252.zip to use an existing verified archive.'
+	  'Supply NEXUIZ_ARCHIVE=/path/nexuiz-252.zip to use an existing verified archive.' \
+	  'Use CONTENT_PROFILE=dev128 for a 128 MiB content image; default stock64 includes the texture override.'
 
 bootstrap: deps content preflight
 
@@ -129,12 +134,14 @@ preflight:
 stage: preflight
 	@echo "[ STAGE    ] complete Nexuiz 2.5.2 data tree"
 	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/stage_classic_release.py" \
-		--lock "$(LOCK)" --archive "$(NEXUIZ_ARCHIVE)" --disc "$(DISC_DIR)"
+		--lock "$(LOCK)" --archive "$(NEXUIZ_ARCHIVE)" --disc "$(DISC_DIR)" \
+		--content-profile "$(CONTENT_PROFILE)"
 
 identity: stage
 	@echo "[ IDENTITY ] $(BUILD_IDENTITY)"
 	@{ \
 		echo "release=nexuiz-xbox-2.5.2"; \
+		echo "content_profile=$(CONTENT_PROFILE)"; \
 		echo "port_commit=$$($(GIT) -C "$(ROOT_DIR)" rev-parse HEAD)"; \
 		echo "nxdk=$(shell cat $(ROOT_DIR)/xbox/nxdk.version)"; \
 		echo "darkplaces=$(DP_CLASSIC_REV)"; \
@@ -159,6 +166,8 @@ xbe: stage identity engine
 	@echo "[ XBE      ] $(XBE)"
 	@$(MAKE) -C "$(CLASSIC_DIR)" V=1 "$(XBE)" $(COMMON_VARS)
 	@test -s "$(XBE)" || { echo "Missing/empty XBE: $(XBE)" >&2; exit 2; }
+	@$(PYTHON) "$(ROOT_DIR)/tools/xbox/set_xbe_memory_profile.py" \
+		"$(XBE)" "$(CONTENT_PROFILE)"
 
 verify-tree: xbe identity
 	@echo "[ VERIFY   ] staged release tree"

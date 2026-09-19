@@ -227,7 +227,10 @@ def build_pack(
     output_path: Path,
     max_dimension: int = STOCK_MAX_DIMENSION,
     external_lightmap_dimension: int = EXTERNAL_LIGHTMAP_DIMENSION,
+    profile: str = "stock64",
 ) -> dict:
+    if profile not in ("stock64", "dev128"):
+        raise TexturePackError(f"unsupported content profile: {profile}")
     if not pk3_paths:
         raise TexturePackError("at least one source PK3 is required")
     if external_lightmap_dimension <= 0 or external_lightmap_dimension > max_dimension:
@@ -303,7 +306,7 @@ def build_pack(
 
     manifest = {
         "schema_version": 1,
-        "profile": "stock64",
+        "profile": profile,
         "max_dimension": max_dimension,
         "external_lightmap_dimension": external_lightmap_dimension,
         "filter": "repeated-2x2-box-premultiplied-alpha",
