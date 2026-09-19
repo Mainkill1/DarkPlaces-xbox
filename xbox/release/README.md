@@ -143,6 +143,14 @@ engine's BSP/frustum fallback. Portal-dependent SVBSP light selection is bypasse
 when no graph exists. Q1 behavior is unchanged, and runtime rendering remains a
 required validation gate.
 
+The staged Xbox defaults currently select DarkPlaces' immediate mesh-submission
+diagnostic and enable GL error checks. The pbGL client-array path displayed
+vertical green corruption; the immediate path produced readable loading art
+while keeping the same engine geometry and material inputs. Xbox adapters fill
+pbGL's missing client-array and current-2D-binding queries so diagnostics and
+texture restoration remain deterministic. This is a bring-up fallback, not
+evidence that menu interaction or world rendering is complete.
+
 The same generated Xbox `model_brush.c` also pre-counts Q3 patch faces before
 allocating temporary tessellation records. This preserves the pinned loader's
 surface and curve behavior while avoiding one scratch record for every flat BSP

@@ -50,6 +50,8 @@ class ClassicReleaseStagingTests(unittest.TestCase):
             self.assertIn("exec xbox-defaults.cfg", autoexec)
             self.assertIn("developer_loading 1", defaults)
             self.assertIn("developer_texturelogging 1", defaults)
+            self.assertIn("gl_mesh_testmanualfeeding 1", defaults)
+            self.assertIn("gl_paranoid 1", defaults)
             saved = json.loads((disc / "CONTENT-IDENTITY.json").read_text(encoding="utf-8"))
             self.assertEqual(saved["source_sha256"], digest)
             self.assertEqual(saved["data_prefix"], "Nexuiz/data/")

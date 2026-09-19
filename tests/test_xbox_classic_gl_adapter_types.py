@@ -12,6 +12,10 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = r'''
 #include <GL/gl.h>
+static void Xbox_glActiveTexture(GLenum unit);
+static void Xbox_glBindTexture(GLenum target, GLuint texture);
+static void Xbox_glGetIntegerv(GLenum pname, GLint *params);
+static GLboolean Xbox_glIsEnabled(GLenum feature);
 static void Xbox_glDrawBuffer(GLenum mode);
 static void Xbox_glReadBuffer(GLenum mode);
 static void Xbox_glGetDoublev(GLenum pname, GLdouble *params);

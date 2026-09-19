@@ -6,6 +6,7 @@
 
 #include "quakedef.h"
 #include "xbox_gl_upload.h"
+#include "xbox_gl_state.h"
 
 /*
  * DarkPlaces 2009 resolves GL entry points at runtime. pbGL is statically
@@ -15,6 +16,26 @@
  */
 
 static GLdouble clip_planes[6][4];
+
+static void Xbox_glActiveTexture(GLenum unit)
+{
+	Xbox_GLActiveTexture(glActiveTexture, unit);
+}
+
+static void Xbox_glBindTexture(GLenum target, GLuint texture)
+{
+	Xbox_GLBindTexture(glBindTexture, target, texture);
+}
+
+static void Xbox_glGetIntegerv(GLenum pname, GLint *params)
+{
+	Xbox_GLGetIntegerv(glGetIntegerv, pname, params);
+}
+
+static GLboolean Xbox_glIsEnabled(GLenum feature)
+{
+	return Xbox_GLIsEnabled(glIsEnabled, glGetBooleanv, feature);
+}
 
 static void Xbox_glDrawBuffer(GLenum mode) { (void)mode; }
 static void Xbox_glReadBuffer(GLenum mode) { (void)mode; }
@@ -132,9 +153,9 @@ void *GL_GetProcAddress(const char *name_string)
 		return NULL;
 
 	MAP_GL(glClearColor); MAP_GL(glClear); MAP_GL(glAlphaFunc); MAP_GL(glBlendFunc);
-	MAP_GL(glCullFace); MAP_GL(glEnable); MAP_GL(glDisable); MAP_GL(glIsEnabled);
+	MAP_GL(glCullFace); MAP_GL(glEnable); MAP_GL(glDisable);
 	MAP_GL(glEnableClientState); MAP_GL(glDisableClientState); MAP_GL(glGetBooleanv);
-	MAP_GL(glGetFloatv); MAP_GL(glGetIntegerv); MAP_GL(glGetError); MAP_GL(glGetString);
+	MAP_GL(glGetFloatv); MAP_GL(glGetError); MAP_GL(glGetString);
 	MAP_GL(glFinish); MAP_GL(glFlush); MAP_GL(glClearDepth); MAP_GL(glDepthFunc);
 	MAP_GL(glDepthMask); MAP_GL(glDepthRange); MAP_GL(glDrawElements); MAP_GL(glColorMask);
 	MAP_GL(glVertexPointer); MAP_GL(glNormalPointer); MAP_GL(glColorPointer);
@@ -149,13 +170,16 @@ void *GL_GetProcAddress(const char *name_string)
 	MAP_GL(glReadPixels); MAP_GL(glStencilFunc); MAP_GL(glStencilMask); MAP_GL(glStencilOp);
 	MAP_GL(glClearStencil); MAP_GL(glTexEnvf); MAP_GL(glTexEnvfv); MAP_GL(glTexEnvi);
 	MAP_GL(glTexParameterf); MAP_GL(glTexParameteri); MAP_GL(glHint);
-	MAP_GL(glPixelStorei); MAP_GL(glGenTextures); MAP_GL(glDeleteTextures); MAP_GL(glBindTexture);
+	MAP_GL(glPixelStorei); MAP_GL(glGenTextures); MAP_GL(glDeleteTextures);
 	MAP_GL(glIsTexture);
 	MAP_GL(glCopyTexImage2D); MAP_GL(glCopyTexSubImage2D); MAP_GL(glScissor);
 	MAP_GL(glPolygonOffset); MAP_GL(glPolygonMode);
 
 	if (!strcmp(name_string, "glDrawBuffer")) return (void *)Xbox_glDrawBuffer;
 	if (!strcmp(name_string, "glReadBuffer")) return (void *)Xbox_glReadBuffer;
+	if (!strcmp(name_string, "glGetIntegerv")) return (void *)Xbox_glGetIntegerv;
+	if (!strcmp(name_string, "glIsEnabled")) return (void *)Xbox_glIsEnabled;
+	if (!strcmp(name_string, "glBindTexture")) return (void *)Xbox_glBindTexture;
 	if (!strcmp(name_string, "glGetDoublev")) return (void *)Xbox_glGetDoublev;
 	if (!strcmp(name_string, "glPixelStoref")) return (void *)Xbox_glPixelStoref;
 	if (!strcmp(name_string, "glTexParameterfv")) return (void *)Xbox_glTexParameterfv;
@@ -172,7 +196,7 @@ void *GL_GetProcAddress(const char *name_string)
 	if (!strcmp(name_string, "glGetClipPlane")) return (void *)Xbox_glGetClipPlane;
 
 	/* pbGL exposes OpenGL 1.3 core names; DarkPlaces asks for ARB aliases. */
-	if (!strcmp(name_string, "glActiveTextureARB")) return (void *)glActiveTexture;
+	if (!strcmp(name_string, "glActiveTextureARB")) return (void *)Xbox_glActiveTexture;
 	if (!strcmp(name_string, "glClientActiveTextureARB")) return (void *)glClientActiveTexture;
 	if (!strcmp(name_string, "glMultiTexCoord1fARB")) return (void *)Xbox_glMultiTexCoord1f;
 	if (!strcmp(name_string, "glMultiTexCoord2fARB")) return (void *)glMultiTexCoord2f;

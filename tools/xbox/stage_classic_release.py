@@ -54,6 +54,11 @@ cl_minfps_qualitymin 1
 cl_minfps_qualitymax 1
 developer_loading 1
 developer_texturelogging 1
+// Suspected pbGL client-array corruption produced vertical green output on NV2A.
+// Use the engine's equivalent immediate path while isolating array submission.
+gl_mesh_testmanualfeeding 1
+// Persist pbGL-reported errors in boot-trace.txt during renderer bring-up.
+gl_paranoid 1
 xbox_apply_memory_profile
 alias xbox_demo_start "startdemos demos/bench1 demos/demo1 demos/demo2 demos/demo3 demos/demo4 demos/demo5 demos/piece-o-cake"
 xbox_demo_start

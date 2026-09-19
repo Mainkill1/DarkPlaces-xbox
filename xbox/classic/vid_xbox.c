@@ -11,6 +11,7 @@
 #include "../attract_policy.h"
 #include "include/xbox_boot_trace.h"
 #include "include/xbox_gl_bootstrap.h"
+#include "include/xbox_gl_state.h"
 #include "include/xbox_network.h"
 
 int cl_available = true;
@@ -324,6 +325,8 @@ int VID_InitMode(int fullscreen, int *width, int *height, int bpp, int refreshra
 			pbgl_shutdown();
 		return false;
 	}
+	if (!pbgl_started)
+		Xbox_GLStateReset();
 	pbgl_started = true;
 	gl_platform = "pbGL/NV2A";
 	gl_platformextensions = "";
