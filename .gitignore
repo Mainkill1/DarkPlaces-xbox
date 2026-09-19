@@ -80,6 +80,7 @@ wasm/preload/*
 
 # Local emulator storage may contain mutable user or console-specific data.
 /xbox/hdd/
+/xbox/xemu/
 
 # Isolated agent development branches.
 /.worktrees/

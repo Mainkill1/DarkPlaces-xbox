@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Materialize bounded Xbox external-lightmap streaming in model_brush.c."""
+"""Materialize bounded Xbox model-loading adaptations in model_brush.c."""
 
 from __future__ import annotations
 
@@ -263,6 +263,23 @@ PATCH_STORE_NEW = '''\
 \t \t\tpatchtess[patchtesscount].info.xsize = patchsize[0];
 '''
 
+Q3_PORTALS_OLD = '''\
+	// the MakePortals code works fine on the q3bsp data as well
+	Mod_Q1BSP_MakePortals();
+'''
+
+Q3_PORTALS_NEW = '''\
+	// Xbox: Q3 BSP files already provide PVS data and node/leaf bounds.  Runtime
+	// portal reconstruction is an optional culling accelerator, but its recursive
+	// split representation exhausts the stock-memory loading headroom.
+	loadmodel->brush.data_portals = NULL;
+	loadmodel->brush.num_portals = 0;
+	loadmodel->brush.data_portalpoints = NULL;
+	loadmodel->brush.num_portalpoints = 0;
+	if (developer_loading.integer)
+		Con_Printf("Xbox Q3 portals disabled; using BSP PVS/frustum fallback\\n");
+'''
+
 
 def materialize(source: Path, output: Path) -> None:
     data = source.read_bytes()
@@ -279,6 +296,7 @@ def materialize(source: Path, output: Path) -> None:
         (PATCH_DECLARATIONS_OLD, PATCH_DECLARATIONS_NEW, "patch declarations"),
         (PATCH_ALLOCATION_OLD, PATCH_ALLOCATION_NEW, "patch allocation"),
         (PATCH_STORE_OLD, PATCH_STORE_NEW, "patch capacity check"),
+        (Q3_PORTALS_OLD, Q3_PORTALS_NEW, "Q3 portal fallback"),
     )
     for old, new, label in replacements:
         if text.count(old) != 1:

@@ -261,6 +261,21 @@ stored override pack. The larger disc payload is not resident memory: stored
 entries deliberately trade XISO space for bounded 256 KiB general and 16 KiB
 external-lightmap decoded images without a simultaneous DEFLATE workspace.
 
+The next stock-memory run confirmed that policy: free physical pages at the end
+of external-lightmap upload rose from 173 to 1,645 (about 6.4 MiB), and the
+combined world surfmesh allocation completed. Loading then exhausted memory in
+`AllocPortal` while recursively reconstructing the optional DarkPlaces portal
+graph for the Q3 BSP. Each temporary portal reserves storage for 64 double-
+precision points, and Strength has 1,710 BSP nodes before recursive portal
+splits. The Xbox Q3 path now omits that reconstruction and deliberately uses the
+map's authored PVS plus loaded node/leaf bounds through the renderer's existing
+frustum fallback. Q1 portal construction is unchanged. This removes portal-based
+culling as an optimization. The Xbox surface-renderer adaptation also prevents
+portal-dependent SVBSP light selection when the graph is absent, falling back to
+the existing BSP/PVS traversal instead. A new stock-memory run must establish
+the next gate and compare world and realtime-light behavior before the fallback
+is accepted.
+
 ## Required instrumentation
 
 - current and peak zone/mempool use;

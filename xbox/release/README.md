@@ -137,6 +137,12 @@ picmip to the resulting GPU textures. The separate ceiling bounds transient
 and resident use while preserving the loader's required square power-of-two
 input and size-derived UV scaling.
 
+The Xbox Q3 loader also omits DarkPlaces' optional runtime portal
+reconstruction and uses the map's authored PVS and node/leaf bounds with the
+engine's BSP/frustum fallback. Portal-dependent SVBSP light selection is bypassed
+when no graph exists. Q1 behavior is unchanged, and runtime rendering remains a
+required validation gate.
+
 The same generated Xbox `model_brush.c` also pre-counts Q3 patch faces before
 allocating temporary tessellation records. This preserves the pinned loader's
 surface and curve behavior while avoiding one scratch record for every flat BSP

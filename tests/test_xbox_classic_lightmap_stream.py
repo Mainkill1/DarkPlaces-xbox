@@ -58,6 +58,20 @@ class ClassicLightmapStreamTests(unittest.TestCase):
         self.assertIn("Xbox patch tessellation scratch: %i of %i faces", patched)
         self.assertNotIn("count * sizeof(*patchtess)", patched)
 
+    def test_q3_portal_reconstruction_uses_pvs_frustum_fallback(self):
+        patched = self._materialized_source()
+
+        q1_loader = patched[patched.index("void Mod_Q1BSP_Load("):]
+        q1_loader = q1_loader[:q1_loader.index("void static Mod_Q2BSP_Load(")]
+        q3_loader = patched[patched.index("void Mod_Q3BSP_Load("):]
+        self.assertIn("Mod_Q1BSP_MakePortals();", q1_loader)
+        self.assertNotIn("Mod_Q1BSP_MakePortals();", q3_loader)
+        self.assertIn("loadmodel->brush.data_portals = NULL;", q3_loader)
+        self.assertIn("loadmodel->brush.num_portals = 0;", q3_loader)
+        self.assertIn("loadmodel->brush.data_portalpoints = NULL;", q3_loader)
+        self.assertIn("loadmodel->brush.num_portalpoints = 0;", q3_loader)
+        self.assertIn("Xbox Q3 portals disabled; using BSP PVS/frustum fallback", q3_loader)
+
     def test_classic_build_uses_only_the_materialized_model_brush(self):
         text = MAKEFILE.read_text(encoding="utf-8")
         self.assertIn("PATCHED_MODEL_BRUSH :=", text)
